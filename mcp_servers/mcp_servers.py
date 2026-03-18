@@ -53,7 +53,7 @@ def get_server_config(reports_dir: str) -> List[ServerConfig]:
             command = 'python3',
             args = ['-m', 'mcp_servers.event_server'],
             timeout_seconds = 120,
-        )
+        ),
         
         ServerConfig(
             alias = 'dzt',

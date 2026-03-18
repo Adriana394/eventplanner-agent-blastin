@@ -137,7 +137,7 @@ async def get_trails_by_criteria(
 
 
 @mcp.tool()
-async df get_entity_details(
+async def get_entity_details(
     uri: str, 
     language: str = 'de',
 ) -> dict:
@@ -154,7 +154,7 @@ async df get_entity_details(
 
    
     
-if __name__ == 'main':
+if __name__ == '__main__':
     mcp.run(transport = 'stdio')
 
 

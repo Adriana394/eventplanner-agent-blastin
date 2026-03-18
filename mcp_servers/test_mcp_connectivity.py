@@ -3,7 +3,7 @@ import os
 
 from dotenv import load_dotenv
 
-from mcp_servers.mcp_servers import bundle_servers, get_server_config,ServerConfig
+from mcp_servers.mcp_servers import bundle_servers, get_server_config, ServerConfig
 
 load_dotenv(override = True)
 
