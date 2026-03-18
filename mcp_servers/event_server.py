@@ -474,12 +474,8 @@ async def get_popular_events(
     }
 
 
-def _main() -> None:
+if __name__ == '__main__':
     """
     Entry point for running this MCP server as a separate process.
     """
     mcp.run('stdio')
-
-
-if __name__ == '__main__':
-    _main()

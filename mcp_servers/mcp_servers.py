@@ -54,6 +54,13 @@ def get_server_config(reports_dir: str) -> List[ServerConfig]:
             args = ['-m', 'mcp_servers.event_server'],
             timeout_seconds = 120,
         )
+        
+        ServerConfig(
+            alias = 'dzt',
+            command = 'python3',
+            args = ['-m', 'mcp_servers.dzt_server'],
+            timeout_seconds = 120,
+        )
     ]
         
         # Add another Sever

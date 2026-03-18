@@ -106,12 +106,13 @@ async def run_full_planner_flow(user_request: UserRequest) -> dict:
         pw = servers['playwright']
         fs = servers['filesystem']
         eventim = servers['eventim']
+        dzt = servers['dzt']
         
         dion_planner = Agent(
             name = 'Dion_Planner', 
             instructions = SYSTEM_INSTRUCTIONS_PLANNER,
             model = 'gpt-4.1-nano',
-            mcp_servers = [pw, fs, eventim],
+            mcp_servers = [pw, fs, eventim, dzt],
             output_type = CoreResult
             )
         
