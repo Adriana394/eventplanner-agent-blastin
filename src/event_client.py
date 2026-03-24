@@ -21,7 +21,8 @@ from IPython.display import display, Markdown
 
 from mcp_servers.mcp_servers import get_server_config, bundle_servers
 from src.schemas import (UserRequest, CoreResult, UIResult, MarkdownReport,
-                         UIEventTeaser, UISpotItem, UIDayOverview)
+                         UIEventTeaser, UISpotItem, UIDayOverview, UIItineraryStop)
+
 from src.instructions import SYSTEM_INSTRUCTIONS_PLANNER, SYSTEM_INSTRUCTIONS_REPORTER
 
 
@@ -78,12 +79,21 @@ def core_to_ui(core_result: CoreResult) -> UIResult:
             )
         )
 
-    itinerary_overview = []
+        itinerary_overview = []
     for day in core_result.itinerary:
         itinerary_overview.append(
             UIDayOverview(
                 day_label = day.day_label,
-                stop_titles = [stop.title for stop in day.stops],
+                stops = [
+                    UIItineraryStop(
+                        title = stop.title,
+                        start_time = stop.start_time,
+                        duration_minutes = stop.duration_minutes,
+                        notes = stop.notes,
+                        stop_type = stop.stop_type,
+                    )
+                    for stop in day.stops
+                ],
             )
         )
 
@@ -163,10 +173,10 @@ async def main():
                 'city': 'Berlin',
                 'date_start': '2026-01-30',
                 'date_end': '2026-02-01',
+                'planning_mode': 'full_trip',
                 'budget': {
-                    'budget_level': 'medium',
-                    'min_trip_total': 100,
-                    'max_trip_total': 250,
+                    'min_budget': 100,
+                    'max_budget': 250,
                 },
             },
             'events': {

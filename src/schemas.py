@@ -6,10 +6,14 @@ from enum import Enum
 
 # Structured Inputs
 
-class BudgetLevel(str, Enum):
-    low = 'low'
-    medium = 'medium'
-    high = 'high'
+class PlanningMode(str, Enum):
+    full_trip = 'full_trip'
+    event_day_trip = 'event_day_trip'
+
+# class BudgetLevel(str, Enum):
+#     low = 'low'
+#     medium = 'medium'
+#     high = 'high'
     
      
 class TimePreferences(str, Enum):
@@ -40,13 +44,13 @@ class Budget(BaseModel):
     User can use budget_level or min/max amounts
     """
     #currency: str = Field(default = 'EUR', description = 'Currency code ')
-    budget_level : Optional[str] = Field(default = None, description = 'Budget tier, e.g. low, medium, high')
-    min_trip_total : Optional[float] = Field(default = None, description = 'Minimum total trip budget')
-    max_trip_total : Optional[float] = Field(default = None, description = 'Maximum total trip budget')
+    #budget_level : Optional[BudgetLevel] = Field(default = None, description = 'Budget tier, e.g. low, medium, high.')
+    min_budget : Optional[float] = Field(default = None, description = 'Minimum budget amount.')
+    max_budget : Optional[float] = Field(default = None, description = 'Maximum budget amount.')
     
     @model_validator(mode = 'after')
     def validate_min_max(self):
-        if self.min_trip_total is not None and self.max_trip_total is not None and self.min_trip_total > self.max_trip_total:
+        if self.min_budget is not None and self.max_budget is not None and self.min_budget > self.max_budget:
             raise ValueError('Min budget must be <= max budget')
         return self
    
@@ -56,6 +60,8 @@ class TripRequest(BaseModel):
     country: Optional[str] = Field(default = None, description= ' Optional country name.')
     date_start: date = Field(description= ' Start date of the trip.')
     date_end: date = Field(description= 'End date of the trip.')
+    
+    planning_mode: PlanningMode = Field(default = PlanningMode.full_trip, description= 'Defines whether the user wants a full trip or only an event/day trip.')
     
     group_size: Optional[conint(ge=1, le=15)] = Field(default = None, description= 'Number of travel group.')
     budget: Optional[Budget] = Field(default = None, description= 'Optional budget information.')
@@ -234,10 +240,16 @@ class UISpotItem(BaseModel):
     opening_hours: Optional[str] = None
     source_url: str
 
-
+class UIItineraryStop(BaseModel):
+    title: str
+    start_time: Optional[str] = None
+    notes: Optional[str] = None
+    stop_type: Optional[str] = None
+    
+    
 class UIDayOverview(BaseModel):
     day_label: str
-    stop_titles: List[str] = Field(description= "Short stop titles in order for UI display.")
+    stops: List[UIItineraryStop] = Field(description= "Ordered itinerary stops for UI display.")
 
 
 class UIResult(BaseModel):

@@ -103,11 +103,9 @@ LANGUAGE_OPTIONS = {
     'Deutsch': 'Deutsch',
 }
 
-BUDGET_OPTIONS = {
-    'No preference': None,
-    'Low': 'low',
-    'Medium': 'medium',
-    'High': 'high',
+PLANNING_MODE_OPTIONS = {
+    'Full Trip': 'full_trip',
+    'Event or Day Trip': 'event_day_trip',
 }
 
 GROUP_SIZE_OPTIONS = list(range(1, 16))
@@ -168,7 +166,7 @@ def render_intro() -> None:
             """
             <div class='section-card'>
                 <h3>🧳 Trip basics</h3>
-                <p>Set the city, travel window, group size, and total trip budget.</p>
+                <p>Set the city, travel window, planning mode, group size, and budget.</p>
             </div>
             """,
             unsafe_allow_html = True,
@@ -203,10 +201,10 @@ def build_user_request(
     country: str,
     date_start: date,
     date_end: date,
+    planning_mode: str,
     group_size: int,
-    budget_level: str | None,
-    min_trip_total: int | None,
-    max_trip_total: int | None,
+    min_budget: int | None,
+    max_budget: int | None,
     vibe: str,
     categories: str,
     time_pref_label: str,
@@ -227,11 +225,11 @@ def build_user_request(
             'country': country.strip() or None,
             'date_start': str(date_start),
             'date_end': str(date_end),
+            'planning_mode': planning_mode,
             'group_size': group_size,
             'budget': {
-                'budget_level': budget_level,
-                'min_trip_total': min_trip_total,
-                'max_trip_total': max_trip_total,
+                'min_budget': min_budget,
+                'max_budget': max_budget,
             },
         },
         'events': {
@@ -249,7 +247,7 @@ def build_user_request(
         },
     }
 
-    if not budget_level and min_trip_total is None and max_trip_total is None:
+    if min_budget is None and max_budget is None:
         payload['trip'].pop('budget')
 
     if (
@@ -271,6 +269,41 @@ def build_user_request(
             payload['events']['vibe'] = f'Notes: {user_notes.strip()}'
 
     return UserRequest.model_validate(payload)
+
+
+def validate_required_inputs(
+    city: str,
+    date_start: date,
+    date_end: date,
+    planning_mode: str | None,
+    categories: str,
+    min_budget: int | None,
+    max_budget: int | None,
+) -> list[str]:
+    errors: list[str] = []
+
+    if not city.strip():
+        errors.append('Please enter a city.')
+
+    if date_start is None:
+        errors.append('Please select a start date.')
+
+    if date_end is None:
+        errors.append('Please select an end date.')
+
+    if date_start is not None and date_end is not None and date_end < date_start:
+        errors.append('End date must be on or after the start date.')
+
+    if not planning_mode:
+        errors.append('Please choose a planning mode.')
+
+    if not categories.strip():
+        errors.append('Please enter at least one event category or desired activity.')
+
+    if min_budget is None and max_budget is None:
+        errors.append('Please provide at least a minimum or maximum budget.')
+
+    return errors
 
 
 def render_form() -> UserRequest | None:
@@ -332,25 +365,38 @@ def render_form() -> UserRequest | None:
                 index = 0,
             )
 
-        st.markdown('### 💸 Total trip budget')
-        st.caption('This refers to the overall trip budget, not the price per single event.')
-        col_budget_1, col_budget_2, col_budget_3 = st.columns(3)
+        st.markdown('### 🧭 Planning mode')
+        planning_mode_label = st.selectbox(
+            'What do you want Dion to plan?',
+            options = list(PLANNING_MODE_OPTIONS.keys()),
+            index = 0,
+        )
+
+        planning_mode = PLANNING_MODE_OPTIONS[planning_mode_label]
+
+        if planning_mode == 'full_trip':
+            budget_caption = 'This refers to the overall budget for the whole trip.'
+            min_budget_label = 'Minimum trip budget (optional)'
+            max_budget_label = 'Maximum trip budget (optional)'
+        else:
+            budget_caption = 'This refers to the budget for this day / event plan.'
+            min_budget_label = 'Minimum day / event budget (optional)'
+            max_budget_label = 'Maximum day / event budget (optional)'
+
+        st.markdown('### 💸 Budget')
+        st.caption(f'{budget_caption} Please provide at least a minimum or maximum budget')
+
+        col_budget_1, col_budget_2 = st.columns(2)
         with col_budget_1:
-            budget_label = st.selectbox(
-                'Budget level',
-                options = list(BUDGET_OPTIONS.keys()),
-                index = 0,
-            )
-        with col_budget_2:
-            min_trip_total = st.number_input(
-                'Minimum total budget (optional)',
+            min_budget = st.number_input(
+                min_budget_label,
                 min_value = 0,
                 value = 0,
                 step = 10,
             )
-        with col_budget_3:
-            max_trip_total = st.number_input(
-                'Maximum total budget (optional)',
+        with col_budget_2:
+            max_budget = st.number_input(
+                max_budget_label,
                 min_value = 0,
                 value = 0,
                 step = 10,
@@ -371,8 +417,8 @@ def render_form() -> UserRequest | None:
             )
         with col_event_2:
             categories = st.text_input(
-                'Which event categories do you want?',
-                placeholder = 'e.g. concert, festival, club, musical',
+                'Which event categories or desired activities do you want?',
+                placeholder = 'e.g. concert, festival, club, musical, museum, theatre',
                 max_chars = 60,
             )
             free_only = st.selectbox(
@@ -428,11 +474,26 @@ def render_form() -> UserRequest | None:
 
         submitted = st.form_submit_button('✨ Build my plan', use_container_width = True)
 
-    if not submitted:
+        if not submitted:
         return None
 
-    min_trip_total_value = None if min_trip_total == 0 else int(min_trip_total)
-    max_trip_total_value = None if max_trip_total == 0 else int(max_trip_total)
+    min_budget_value = None if min_budget == 0 else int(min_budget)
+    max_budget_value = None if max_budget == 0 else int(max_budget)
+
+    validation_errors = validate_required_inputs(
+        city = city,
+        date_start = date_start,
+        date_end = date_end,
+        planning_mode = planning_mode,
+        categories = categories,
+        min_budget = min_budget_value,
+        max_budget = max_budget_value,
+    )
+
+    if validation_errors:
+        for error in validation_errors:
+            st.error(error)
+        return None
 
     try:
         user_request = build_user_request(
@@ -441,10 +502,10 @@ def render_form() -> UserRequest | None:
             country = country,
             date_start = date_start,
             date_end = date_end,
+            planning_mode = planning_mode,
             group_size = int(group_size),
-            budget_level = BUDGET_OPTIONS[budget_label],
-            min_trip_total = min_trip_total_value,
-            max_trip_total = max_trip_total_value,
+            min_budget = min_budget_value,
+            max_budget = max_budget_value,
             vibe = vibe,
             categories = categories,
             time_pref_label = time_pref_label,
@@ -456,6 +517,7 @@ def render_form() -> UserRequest | None:
             language_label = language_label,
             user_notes = user_notes,
         )
+
     except Exception as exc:
         st.session_state['last_error'] = str(exc)
         return None
@@ -577,12 +639,24 @@ def render_results() -> None:
         else:
             st.write('No sightseeing spots available.')
 
-    st.markdown('### 🗺️ Itinerary overview')
+        st.markdown('### 🗺️ Itinerary overview')
     if ui_result.itinerary_overview:
         for day in ui_result.itinerary_overview:
             with st.expander(day.day_label, expanded = True):
-                for idx, title in enumerate(day.stop_titles, start = 1):
-                    st.write(f'{idx}. {title}')
+                for idx, stop in enumerate(day.stops, start = 1):
+                    time_label = stop.start_time or 'Time unknown'
+                    duration_label = (
+                        f'{stop.duration_minutes} min'
+                        if stop.duration_minutes is not None
+                        else 'duration unknown'
+                    )
+                    type_label = stop.stop_type or 'stop'
+
+                    st.markdown(f"**{idx}. {time_label} — {stop.title}**")
+                    st.caption(f'{type_label} • {duration_label}')
+
+                    if stop.notes:
+                        st.write(stop.notes)
     else:
         st.write('No itinerary overview available.')
 
