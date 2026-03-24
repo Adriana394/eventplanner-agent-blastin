@@ -27,7 +27,7 @@ def core_result_to_markdown_report(
     if created_at_iso is None:
         created_at_iso = datetime.now().isoformat(timespec = 'seconds')
         
-    title = f'BlastIn Plan: {user_request.trip.city} ({user_request.trip.date_start} to {user.trip.date_end})'
+    title = f"Dion's BlastIn Plan for {user_request.trip.city} ({user_request.trip.date_start} to {user_request.trip.date_end})"
     
     sections = list[MarkdownSection] = []
     
@@ -35,7 +35,7 @@ def core_result_to_markdown_report(
     rec_lines = [f'- {s}' for s in core_result.recommendation.sentences]
     sections.append(
         MarkdownSection(
-            heading = 'Recommendation',
+            heading = "Dion's Recommendation",
             body_markdown = '\n'.join(rec_lines) if rec_lines else '- (no recommendation provided)'
         )
     )
@@ -70,9 +70,8 @@ def core_result_to_markdown_report(
             day_blocks.append(f'### {day.day_label}')
             for stop in day.stops:
                 t = stop.start_time or 'unknown'
-                dur = f'{stop.duration_minutes} min' if stop.duration_minutes is not None else 'unknown duration'
                 note = f' — {stop.notes}' if stop.notes else ''
-                day_blocks.append(f'- **{t}** — {stop.title} ({stop.stop_type}, {dur}){note}')
+                day_blocks.append(f'- **{t}** — {stop.title} ({stop.stop_type}){note}')
             day_blocks.append('')
         sections.append(
             MarkdownSection(

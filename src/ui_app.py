@@ -475,7 +475,7 @@ def render_form() -> UserRequest | None:
         submitted = st.form_submit_button('✨ Build my plan', use_container_width = True)
 
         if not submitted:
-        return None
+            return None
 
     min_budget_value = None if min_budget == 0 else int(min_budget)
     max_budget_value = None if max_budget == 0 else int(max_budget)
@@ -558,6 +558,10 @@ def render_status_and_run(user_request: UserRequest) -> None:
         core_result = result['core_result']
         ui_result = result['ui_result']
         markdown_report = result['markdown_report']
+        saved_report_path = result['saved_report_path']
+        
+        if not saved_report_path:
+            raise ValueError('Reporter did not return a saved report path.')
 
         status_box.success('✨ Planung und Report erfolgreich erstellt')
         progress_bar.progress(100)
@@ -572,6 +576,25 @@ def render_status_and_run(user_request: UserRequest) -> None:
         traceback.print_exc()
         status_box.error('The planner run failed. Please check the current project setup and MCP server configuration.')
         st.session_state['last_error'] = str(exc)
+
+def build_markdown_preview(markdown_report, max_sections: int = 2, max_chars: int = 1400) -> str:
+    parts = [f"# {markdown_report.title}\n"]
+
+    if markdown_report.recommendation and markdown_report.recommendation.sentences:
+        parts.append("## Recommendation\n")
+        for sentence in markdown_report.recommendation.sentences:
+            parts.append(f"- {sentence}\n")
+        parts.append("\n")
+
+    for section in markdown_report.sections[:max_sections]:
+        parts.append(f"## {section.heading}\n\n{section.body_markdown}\n\n")
+
+    preview = ''.join(parts).strip()
+
+    if len(preview) > max_chars:
+        preview = preview[:max_chars].rstrip() + '\n\n...'
+
+    return preview
 
 
 def render_results() -> None:
@@ -605,6 +628,7 @@ def render_results() -> None:
     st.markdown(''.join([f"<span class='pill'>{item}</span>" for item in greeting_bits]), unsafe_allow_html = True)
 
     st.markdown('### 🌟 Recommendation')
+    st.caption("Dion's quick take on why this plan fits your request.")
     for sentence in ui_result.recommendation.sentences:
         st.write(f'- {sentence}')
 
@@ -612,6 +636,7 @@ def render_results() -> None:
 
     with col_events:
         st.markdown('### 🎫 Top events')
+        st.caption('A few standout picks that best match your request.')
         if ui_result.top_events:
             for event in ui_result.top_events:
                 with st.container(border = True):
@@ -628,6 +653,7 @@ def render_results() -> None:
 
     with col_spots:
         st.markdown('### 📍 Sightseeing spots')
+        st.caption('Optional city spots that pair nicely with the overall plan.')
         if ui_result.sightseeing_spots:
             for spot in ui_result.sightseeing_spots:
                 with st.container(border = True):
@@ -640,20 +666,15 @@ def render_results() -> None:
             st.write('No sightseeing spots available.')
 
         st.markdown('### 🗺️ Itinerary overview')
+        
     if ui_result.itinerary_overview:
         for day in ui_result.itinerary_overview:
             with st.expander(day.day_label, expanded = True):
                 for idx, stop in enumerate(day.stops, start = 1):
                     time_label = stop.start_time or 'Time unknown'
-                    duration_label = (
-                        f'{stop.duration_minutes} min'
-                        if stop.duration_minutes is not None
-                        else 'duration unknown'
-                    )
                     type_label = stop.stop_type or 'stop'
 
                     st.markdown(f"**{idx}. {time_label} — {stop.title}**")
-                    st.caption(f'{type_label} • {duration_label}')
 
                     if stop.notes:
                         st.write(stop.notes)
@@ -666,41 +687,14 @@ def render_results() -> None:
             st.warning(warning)
 
     if markdown_report:
-        st.markdown('### 📝 Markdown report')
-        st.markdown(f"**{markdown_report.title}**")
+        st.markdown('### 📝 Report preview')
+        st.caption('A short preview of the saved markdown report.')
 
-        rendered_report_parts = [f'# {markdown_report.title}\n']
+        preview_markdown = build_markdown_preview(markdown_report)
+        st.markdown(preview_markdown)
 
-        if markdown_report.recommendation and markdown_report.recommendation.sentences:
-            st.markdown('#### Recommendation')
-            rendered_report_parts.append('## Recommendation\n')
-            for sentence in markdown_report.recommendation.sentences:
-                st.write(f'- {sentence}')
-                rendered_report_parts.append(f'- {sentence}\n')
-            rendered_report_parts.append('\n')
-
-        for section in markdown_report.sections:
-            st.markdown(f'#### {section.heading}')
-            st.markdown(section.body_markdown)
-            rendered_report_parts.append(f'## {section.heading}\n\n{section.body_markdown}\n\n')
-
-        if markdown_report.sources:
-            st.markdown('#### Sources')
-            rendered_report_parts.append('## Sources\n')
-            for source in markdown_report.sources:
-                label = source.label if source.label else source.url
-                st.write(f'- {label}: {source.url}')
-                rendered_report_parts.append(f'- {label}: {source.url}\n')
-
-        rendered_report = ''.join(rendered_report_parts)
-
-        st.download_button(
-            label = '⬇️ Download markdown report',
-            data = rendered_report,
-            file_name = f"blastin_report_{user_request.trip.city.strip().lower().replace(' ', '_')}.md",
-            mime = 'text/markdown',
-            use_container_width = True,
-        )
+        with st.expander('Show full structured report data'):
+            st.json(markdown_report.model_dump())
 
     with st.expander('Structured request preview'):
         st.json(st.session_state['last_user_request'].model_dump())

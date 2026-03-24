@@ -20,7 +20,7 @@ from agents import FunctionTool, Runner, Agent, trace
 from IPython.display import display, Markdown
 
 from mcp_servers.mcp_servers import get_server_config, bundle_servers
-from src.schemas import (UserRequest, CoreResult, UIResult, MarkdownReport,
+from src.schemas import (UserRequest, CoreResult, UIResult, MarkdownReport, ReporterResult,
                          UIEventTeaser, UISpotItem, UIDayOverview, UIItineraryStop)
 
 from src.instructions import SYSTEM_INSTRUCTIONS_PLANNER, SYSTEM_INSTRUCTIONS_REPORTER
@@ -46,7 +46,14 @@ User request:
 def build_reporter_input_text(reporter_job: dict) -> str:
     return f"""
 Create a MarkdownReport from the following planning result.
-Return only the required MarkdownReport schema.
+
+You must:
+1. Build the MarkdownReport object from the provided data.
+2. Save the markdown report as a .md file in reports_dir using the Filesystem MCP.
+3. Use filename_hint exactly as the filename.
+4. Return a ReporterResult containing:
+   - markdown_report
+   - saved_report_path
 
 Reporter job:
 {json.dumps(reporter_job, ensure_ascii = False, indent = 2)}
@@ -79,7 +86,7 @@ def core_to_ui(core_result: CoreResult) -> UIResult:
             )
         )
 
-        itinerary_overview = []
+    itinerary_overview = []
     for day in core_result.itinerary:
         itinerary_overview.append(
             UIDayOverview(
@@ -88,7 +95,6 @@ def core_to_ui(core_result: CoreResult) -> UIResult:
                     UIItineraryStop(
                         title = stop.title,
                         start_time = stop.start_time,
-                        duration_minutes = stop.duration_minutes,
                         notes = stop.notes,
                         stop_type = stop.stop_type,
                     )
@@ -131,7 +137,7 @@ async def run_full_planner_flow(user_request: UserRequest) -> dict:
             instructions = SYSTEM_INSTRUCTIONS_REPORTER,
             model = 'gpt-4.1-nano',
             mcp_servers = [fs],
-            output_type = MarkdownReport
+            output_type = ReporterResult
         )
         
         with trace('dion_planner'):
@@ -153,13 +159,19 @@ async def run_full_planner_flow(user_request: UserRequest) -> dict:
         with trace('dion_reporter'):
             reporter_run = await Runner.run(dion_reporter, reporter_input_text)
             
-        markdown_report = reporter_run.final_output
+        reporter_result = reporter_run.final_output
+        markdown_report = reporter_result.markdown_report
+        saved_report_path = reporter_result.saved_report_path
+        
+        if not saved_report_path or not saved_report_path.startswith(reports_dir):
+            raise ValueError('Reporter did not return a valid saved report path inside the allowed directory.')
         
         
         return {
             'core_result': core_result,
             'ui_result': ui_result,
             'markdown_report': markdown_report,
+            'saved_report_path': saved_report_path,
         }    
 
 

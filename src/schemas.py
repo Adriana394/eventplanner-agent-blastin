@@ -162,7 +162,6 @@ class ItineraryStop(BaseModel):
     stop_type: Literal['sightseeing', 'event', 'food', 'other'] = Field(description= 'type of stop')
     title: str = Field(description= 'Display title of the stop')
     start_time: Optional[str] = Field(default = None, description= 'Suggested start time (e.g. 10:30).')
-    duration_minutes: Optional[conint(ge=0)] = Field(default = None, description= 'Estimated duration in minutes.')
     notes: Optional[str] = Field(default = None, description= 'Short note (booking tip, why placed here, etc.).')
     
     
@@ -223,6 +222,11 @@ class MarkdownReport(BaseModel):
     sections: List[MarkdownSection] = Field(default_factory=list, description= 'Ordered report sections.')
     sources: List[Source] = Field(default_factory=list, description= 'Sources to show at the end.')
     created_at: Optional[str] = Field(default=None, description= 'ISO datetime when report was created.')
+
+
+class ReporterResult(BaseModel):
+    markdown_report: MarkdownReport
+    saved_report_path: str = Field(description = 'Absolute path where the markdown report was saved.')
 
 
 class UIEventTeaser(BaseModel):
