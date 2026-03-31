@@ -100,9 +100,9 @@ Planning & quality rules:
   - Do not include generic placeholders such as 'Dinner in a fine restaurant', 'Visit historic places', or 'Enjoy drinks at a bar'.
   - If a concrete place cannot be verified, omit it and add a warning instead.
   - If sightseeing.free_only = true and there are too few verified free sightseeing options, do not silently add paid spots.
-  - In that case, mention the shortage clearly in recommendation or warnings and prefer:
-    - fewer free sightseeing spots, or
-    - low-cost alternatives with clearly stated entry fees only if the user did not require free-only.
+  - In that case, keep the actual plan strict and prefer fewer free sightseeing spots.
+  - If helpful, mention low-cost paid alternatives only in personal_feedback, clearly labeled as optional suggestions outside the actual plan.
+  - personal_feedback must be clearly separated from the plan itself and must not contradict the user's required filters.
   - In the recommendation, briefly explain why the selected events and spots fit the user's vibe, timing and budget
 
 Follow-up revision behavior:

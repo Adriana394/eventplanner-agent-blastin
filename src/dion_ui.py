@@ -1087,6 +1087,12 @@ def render_results() -> None:
             lambda: [st.warning(warning) for warning in ui_result.warnings],
         )
 
+    if ui_result.personal_feedback:
+        render_result_block(
+            "Dion's Personal Note",
+            lambda: [st.write(f'- {line}') for line in ui_result.personal_feedback],
+        )
+
     if markdown_report:
         render_result_block(
             'Report Preview',
@@ -1137,7 +1143,7 @@ def _render_day_overview(day) -> None:
             if stop.linked_item_name:
                 st.write(f"Reference: {stop.linked_item_name}")
             if stop.source_url:
-                st.link_button('Open stop source', stop.source_url, key = f'{day.day_label}-{idx}-dion-source')
+                st.link_button('Open stop source', stop.source_url)
 
 
 def render_followup_section() -> None:

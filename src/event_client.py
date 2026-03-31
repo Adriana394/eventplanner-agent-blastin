@@ -163,6 +163,7 @@ def core_to_ui(core_result: CoreResult) -> UIResult:
         food_and_drink_spots = food_and_drink_spots,
         itinerary_overview = itinerary_overview,
         warnings = core_result.warnings,
+        personal_feedback = core_result.personal_feedback,
     )
     
     

@@ -217,6 +217,10 @@ class CoreResult(BaseModel):
     itinerary: List[ItineraryDay] = Field(default_factory=list, description= 'Day by day itinerary.')
     sources: List[Source] = Field(default_factory=list, description= 'All sources used (preferably deduplicated).')
     warnings: List[str] = Field(default_factory=list, description= 'Missing data warnings (prices not found, etc.).')
+    personal_feedback: List[str] = Field(
+        default_factory=list,
+        description= 'Short personal closing notes from Dion, clearly separated from the plan itself.'
+    )
 
     @model_validator(mode="after")
     def validate_max_5_events(self):
@@ -297,6 +301,7 @@ class UIResult(BaseModel):
     food_and_drink_spots: List[UIFoodDrinkSpot] = Field(default_factory=list, description= 'Concrete food and drink recommendations.')
     itinerary_overview: List[UIDayOverview] = Field(default_factory=list, description= 'Day overview.')
     warnings: List[str] = Field(default_factory=list)
+    personal_feedback: List[str] = Field(default_factory=list)
 
 
     @model_validator(mode = 'after')

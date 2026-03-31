@@ -98,6 +98,10 @@ def core_result_to_markdown_report(
         warn_lines = [f'- {w}' for w in core_result.warnings]
         sections.append(MarkdownSection(heading = 'Warnings / Missing Info', body_markdown = '\n'.join(warn_lines)))
 
+    if core_result.personal_feedback:
+        feedback_lines = [f'- {line}' for line in core_result.personal_feedback]
+        sections.append(MarkdownSection(heading = "Dion's Personal Note", body_markdown = '\n'.join(feedback_lines)))
+
     return MarkdownReport(
         title = title,
         recommendation = core_result.recommendation,
