@@ -1,7 +1,7 @@
 import os
 
 from dataclasses import dataclass
-from typing import Dict, List
+from typing import Dict, List, Optional
 from agents.mcp import MCPServerStdio
 
 
@@ -22,6 +22,7 @@ class ServerConfig:
     command: str
     args: List[str]
     timeout_seconds: int = 120
+    env: Optional[Dict[str, str]] = None
     
     
 def get_server_config(reports_dir: str) -> List[ServerConfig]:
@@ -50,16 +51,22 @@ def get_server_config(reports_dir: str) -> List[ServerConfig]:
         
         ServerConfig(
             alias = 'eventim',
-            command = 'python3',
-            args = ['-m', 'mcp_servers.event_server'],
+            command = 'uv',
+            args = ['run', 'python', '-m', 'mcp_servers.event_server'],
             timeout_seconds = 120,
+            env = {
+                'UV_CACHE_DIR': '/tmp/uv-cache',
+            },
         ),
         
         ServerConfig(
             alias = 'dzt',
-            command = 'python3',
-            args = ['-m', 'mcp_servers.dzt_server'],
+            command = 'uv',
+            args = ['run', 'python', '-m', 'mcp_servers.dzt_server'],
             timeout_seconds = 120,
+            env = {
+                'UV_CACHE_DIR': '/tmp/uv-cache',
+            },
         )
     ]
         
@@ -102,9 +109,12 @@ class MCPServerBundle:
         """
         for cfg in self.configs:
             # create client wrapper that start MCP server (stdio)
+            params = {'command': cfg.command, 'args': cfg.args}
+            if cfg.env:
+                params['env'] = cfg.env
             
             server = MCPServerStdio(
-                params = {'command': cfg.command, 'args': cfg.args},
+                params = params,
                 client_session_timeout_seconds = cfg.timeout_seconds,
             )
             

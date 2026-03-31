@@ -13,7 +13,7 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
 from src.schemas import UserRequest
-from src.event_client import run_full_planner_flow
+from src.event_client import run_full_planner_flow, run_followup_planner_flow
 
 
 load_dotenv(override = True)
@@ -22,8 +22,8 @@ REPORTS_DIR = os.getenv('REPORTS_DIR', os.path.join(os.getcwd(), 'outputs', 'rep
 os.makedirs(REPORTS_DIR, exist_ok = True)
 
 st.set_page_config(
-    page_title = 'BlastIn | Dion Event Planner',
-    page_icon = '🎫',
+    page_title = 'BLASTIn | Dion Planner',
+    page_icon = '💜',
     layout = 'wide',
     initial_sidebar_state = 'expanded',
 )
@@ -92,7 +92,7 @@ st.markdown(
 )
 
 TIME_PREF_OPTIONS = {
-    'No preference': 'no preference',
+    'No preference': 'no preferences',
     'Daytime': 'daytime',
     'Evening': 'evening',
     'Night': 'night',
@@ -120,6 +120,8 @@ def init_session_state() -> None:
         'last_ui_result': None,
         'last_markdown_report': None,
         'last_error': None,
+        'followup_text': '',
+        'last_followup_error': None,
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -127,8 +129,8 @@ def init_session_state() -> None:
 
 
 def render_sidebar() -> None:
-    st.sidebar.title('🎫 BlastIn')
-    st.sidebar.caption('Dion helps users discover events and build a focused city plan.')
+    st.sidebar.title('💜 BLASTIn')
+    st.sidebar.caption('Dion helps users discover events, city spots, and memorable nights out.')
 
     st.sidebar.markdown('---')
     st.sidebar.markdown('### Inside this version')
@@ -146,13 +148,13 @@ def render_sidebar() -> None:
 def render_intro() -> None:
     st.markdown(
         """
-        <div class='hero-card'>
+            <div class='hero-card'>
             <div class='soft-label'>Event planning assistant</div>
-            <h1>🎫 BlastIn Event Planner</h1>
+            <h1>💜 BLASTIn Planner</h1>
             <p class='big-intro'>
-                Plan a city experience with Dion. This version is built for real testing:
-                clear user questions, structured planner output, event results, optional sightseeing preferences,
-                and a markdown report generated at the end.
+                Plan a city experience with Dion. This version is built for realistic testing:
+                structured user input, explicit planning scope, concrete recommendations, and a markdown report
+                generated at the end.
             </p>
         </div>
         """,
@@ -202,6 +204,9 @@ def build_user_request(
     date_start: date,
     date_end: date,
     planning_mode: str,
+    events_enabled: bool,
+    sightseeing_enabled: bool,
+    food_drink_enabled: bool,
     group_size: int,
     min_budget: int | None,
     max_budget: int | None,
@@ -226,6 +231,9 @@ def build_user_request(
             'date_start': str(date_start),
             'date_end': str(date_end),
             'planning_mode': planning_mode,
+            'events_enabled': events_enabled,
+            'sightseeing_enabled': sightseeing_enabled,
+            'food_drink_enabled': food_drink_enabled,
             'group_size': group_size,
             'budget': {
                 'min_budget': min_budget,
@@ -250,7 +258,7 @@ def build_user_request(
     if min_budget is None and max_budget is None:
         payload['trip'].pop('budget')
 
-    if (
+    if sightseeing_enabled and (
         sightseeing_interests.strip()
         or sightseeing_mode != 'No preference'
         or sightseeing_free_only
@@ -276,6 +284,7 @@ def validate_required_inputs(
     date_start: date,
     date_end: date,
     planning_mode: str | None,
+    events_enabled: bool,
     categories: str,
     min_budget: int | None,
     max_budget: int | None,
@@ -297,7 +306,7 @@ def validate_required_inputs(
     if not planning_mode:
         errors.append('Please choose a planning mode.')
 
-    if not categories.strip():
+    if events_enabled and not categories.strip():
         errors.append('Please enter at least one event category or desired activity.')
 
     if min_budget is None and max_budget is None:
@@ -374,6 +383,15 @@ def render_form() -> UserRequest | None:
 
         planning_mode = PLANNING_MODE_OPTIONS[planning_mode_label]
 
+        st.markdown('### ✅ Planning scope')
+        col_scope_1, col_scope_2, col_scope_3 = st.columns(3)
+        with col_scope_1:
+            events_enabled = st.checkbox('Include events', value = True)
+        with col_scope_2:
+            sightseeing_enabled = st.checkbox('Include sightseeing', value = True)
+        with col_scope_3:
+            food_drink_enabled = st.checkbox('Include food & drinks', value = True)
+
         if planning_mode == 'full_trip':
             budget_caption = 'This refers to the overall budget for the whole trip.'
             min_budget_label = 'Minimum trip budget (optional)'
@@ -402,51 +420,63 @@ def render_form() -> UserRequest | None:
                 step = 10,
             )
 
-        st.markdown('### 🎶 Event preferences')
-        col_event_1, col_event_2 = st.columns(2)
-        with col_event_1:
-            vibe = st.text_input(
-                'Which vibe do you want?',
-                placeholder = 'e.g. techno, chill, latin, rnb',
-                max_chars = 50,
-            )
-            time_pref_label = st.selectbox(
-                'Preferred time',
-                options = list(TIME_PREF_OPTIONS.keys()),
-                index = 0,
-            )
-        with col_event_2:
-            categories = st.text_input(
-                'Which event categories or desired activities do you want?',
-                placeholder = 'e.g. concert, festival, club, musical, museum, theatre',
-                max_chars = 60,
-            )
-            free_only = st.selectbox(
-                'Only free events?',
-                options = ['No', 'Yes'],
-                index = 0,
-            ) == 'Yes'
+        vibe = ''
+        categories = ''
+        time_pref_label = 'No preference'
+        free_only = False
+        if events_enabled:
+            st.markdown('### 🎶 Event preferences')
+            col_event_1, col_event_2 = st.columns(2)
+            with col_event_1:
+                vibe = st.text_input(
+                    'Which vibe do you want?',
+                    placeholder = 'e.g. techno, chill, latin, rnb',
+                    max_chars = 50,
+                )
+                time_pref_label = st.selectbox(
+                    'Preferred time',
+                    options = list(TIME_PREF_OPTIONS.keys()),
+                    index = 0,
+                )
+            with col_event_2:
+                categories = st.text_input(
+                    'Which event categories or desired activities do you want?',
+                    placeholder = 'e.g. concert, festival, club, musical',
+                    max_chars = 60,
+                )
+                free_only = st.selectbox(
+                    'Only free events?',
+                    options = ['No', 'Yes'],
+                    index = 0,
+                ) == 'Yes'
+        else:
+            st.info('Events are disabled for this run.')
 
-        st.markdown('### 📍 Sightseeing preferences (optional)')
-        st.caption('You can already fill this out, but if left empty Dion should focus on event planning.')
-        col_sight_1, col_sight_2 = st.columns(2)
-        with col_sight_1:
-            sightseeing_interests = st.text_input(
-                'What kind of sightseeing spots do you like?',
-                placeholder = 'e.g. landmarks, viewpoints, historic places',
-                max_chars = 60,
-            )
-            sightseeing_mode = st.selectbox(
-                'Sightseeing style',
-                options = SIGHTSEEING_MODE_OPTIONS,
-                index = 0,
-            )
-        with col_sight_2:
-            sightseeing_free_only = st.selectbox(
-                'Only free sightseeing spots?',
-                options = ['No', 'Yes'],
-                index = 0,
-            ) == 'Yes'
+        sightseeing_interests = ''
+        sightseeing_mode = 'No preference'
+        sightseeing_free_only = False
+        if sightseeing_enabled:
+            st.markdown('### 📍 Sightseeing preferences')
+            col_sight_1, col_sight_2 = st.columns(2)
+            with col_sight_1:
+                sightseeing_interests = st.text_input(
+                    'What kind of sightseeing spots do you like?',
+                    placeholder = 'e.g. landmarks, viewpoints, historic places',
+                    max_chars = 60,
+                )
+                sightseeing_mode = st.selectbox(
+                    'Sightseeing style',
+                    options = SIGHTSEEING_MODE_OPTIONS,
+                    index = 0,
+                )
+            with col_sight_2:
+                sightseeing_free_only = st.selectbox(
+                    'Only free sightseeing spots?',
+                    options = ['No', 'Yes'],
+                    index = 0,
+                ) == 'Yes'
+        else:
+            st.info('Sightseeing is disabled for this run.')
 
         st.markdown('### 🚫 Things to avoid')
         must_avoid_raw = st.text_input(
@@ -485,6 +515,7 @@ def render_form() -> UserRequest | None:
         date_start = date_start,
         date_end = date_end,
         planning_mode = planning_mode,
+        events_enabled = events_enabled,
         categories = categories,
         min_budget = min_budget_value,
         max_budget = max_budget_value,
@@ -503,6 +534,9 @@ def render_form() -> UserRequest | None:
             date_start = date_start,
             date_end = date_end,
             planning_mode = planning_mode,
+            events_enabled = events_enabled,
+            sightseeing_enabled = sightseeing_enabled,
+            food_drink_enabled = food_drink_enabled,
             group_size = int(group_size),
             min_budget = min_budget_value,
             max_budget = max_budget_value,
@@ -577,6 +611,80 @@ def render_status_and_run(user_request: UserRequest) -> None:
         status_box.error('The planner run failed. Please check the current project setup and MCP server configuration.')
         st.session_state['last_error'] = str(exc)
 
+def render_followup_section() -> None:
+    user_request = st.session_state['last_user_request']
+    core_result = st.session_state['last_core_result']
+    
+    if not user_request or not core_result:
+        return
+    
+    st.markdown(
+        """
+        <div class='section-card'>
+            <div class='soft-label'>Follow-up</div>
+            <h2>💬 Refine your plan with Dion</h2>
+            <p>Ask Dion to adjust the existing plan instead of creating a completely new one.</p>
+        </div>
+        """,
+        unsafe_allow_html = True,
+    )
+    
+    followup_text = st.text_area(
+        'What would you like Dion to change?',
+        value = st.session_state.get('followup_text', ''),
+        placeholder = 'e.g. Make Saturday cheaper, add more nightlife, and reduce sightseeing.',
+        max_chars = 300,
+        height = 120,
+    )
+
+    if st.button('🔁 Update my plan with Dion', use_container_width = True):
+        if not followup_text.strip():
+            st.warning('Please enter a follow-up request first.')
+            return
+
+        status_box = st.empty()
+        progress_bar = st.progress(0)
+
+        try:
+            status_box.info('🧠 Dion is revising your current plan…')
+            progress_bar.progress(40)
+
+            result = asyncio.run(
+                run_followup_planner_flow(
+                    original_request = user_request,
+                    current_plan = core_result,
+                    followup_message = followup_text,
+                )
+            )
+
+            status_box.info('📝 Updated report is being saved…')
+            progress_bar.progress(85)
+
+            updated_core_result = result['core_result']
+            updated_ui_result = result['ui_result']
+            updated_markdown_report = result['markdown_report']
+            saved_report_path = result['saved_report_path']
+
+            if not saved_report_path:
+                raise ValueError('Reporter did not return a saved report path.')
+
+            st.session_state['last_core_result'] = updated_core_result
+            st.session_state['last_ui_result'] = updated_ui_result
+            st.session_state['last_markdown_report'] = updated_markdown_report
+            st.session_state['last_error'] = None
+            st.session_state['followup_text'] = ''
+
+            status_box.success('✨ Dion updated your plan successfully.')
+            progress_bar.progress(100)
+
+            st.rerun()
+
+        except Exception as exc:
+            traceback.print_exc()
+            st.session_state['last_error'] = str(exc)
+            status_box.error('Updating the plan failed. Please check the current setup.')
+    
+    
 def build_markdown_preview(markdown_report, max_sections: int = 2, max_chars: int = 1400) -> str:
     parts = [f"# {markdown_report.title}\n"]
 
@@ -610,8 +718,8 @@ def render_results() -> None:
         """
         <div class='section-card'>
             <div class='soft-label'>Generated output</div>
-            <h2>✨ Result overview</h2>
-            <p>Your request has been transformed into a compact city-event plan.</p>
+            <h2>Plan Overview</h2>
+            <p>Your request has been transformed into a structured city plan with clear result blocks.</p>
         </div>
         """,
         unsafe_allow_html = True,
@@ -627,7 +735,15 @@ def render_results() -> None:
 
     st.markdown(''.join([f"<span class='pill'>{item}</span>" for item in greeting_bits]), unsafe_allow_html = True)
 
-    st.markdown('### 🌟 Recommendation')
+    metric_col_1, metric_col_2, metric_col_3 = st.columns(3)
+    with metric_col_1:
+        st.metric('Events', len(ui_result.top_events))
+    with metric_col_2:
+        st.metric('Sightseeing', len(ui_result.sightseeing_spots))
+    with metric_col_3:
+        st.metric('Food & Drinks', len(ui_result.food_and_drink_spots))
+
+    st.markdown('## Summary')
     st.caption("Dion's quick take on why this plan fits your request.")
     for sentence in ui_result.recommendation.sentences:
         st.write(f'- {sentence}')
@@ -635,38 +751,53 @@ def render_results() -> None:
     col_events, col_spots = st.columns(2)
 
     with col_events:
-        st.markdown('### 🎫 Top events')
-        st.caption('A few standout picks that best match your request.')
-        if ui_result.top_events:
-            for event in ui_result.top_events:
-                with st.container(border = True):
-                    st.markdown(f"**{event.name}**")
-                    st.write(f"Time: {event.start_datetime or 'unknown'}")
-                    st.write(f"Venue: {event.venue_name or 'unknown'}")
-                    st.write(f"Price: {event.price_display or 'unknown'}")
-                    if event.source_url:
-                        st.link_button('Open source', event.source_url)
-                    if getattr(event, 'ticket_url', None):
-                        st.link_button('Open ticket page', event.ticket_url)
-        else:
-            st.write('No top events available.')
+        if user_request.trip.events_enabled:
+            st.markdown('## Events')
+            if ui_result.top_events:
+                for event in ui_result.top_events:
+                    with st.container(border = True):
+                        st.markdown(f"**{event.name}**")
+                        st.write(f"Time: {event.start_datetime or 'unknown'}")
+                        st.write(f"Venue: {event.venue_name or 'unknown'}")
+                        st.write(f"Price: {event.price_display or 'unknown'}")
+                        if event.source_url:
+                            st.link_button('Open source', event.source_url)
+                        if getattr(event, 'ticket_url', None):
+                            st.link_button('Open ticket page', event.ticket_url)
+            else:
+                st.info('No verified events were found.')
 
     with col_spots:
-        st.markdown('### 📍 Sightseeing spots')
-        st.caption('Optional city spots that pair nicely with the overall plan.')
-        if ui_result.sightseeing_spots:
-            for spot in ui_result.sightseeing_spots:
-                with st.container(border = True):
-                    st.markdown(f"**{spot.name}**")
-                    st.write(f"Entry: {spot.entry_fee_display or 'unknown'}")
-                    st.write(f"Opening hours: {spot.opening_hours or 'unknown'}")
-                    if spot.source_url:
-                        st.link_button('Open source', spot.source_url)
-        else:
-            st.write('No sightseeing spots available.')
+        if user_request.trip.sightseeing_enabled:
+            st.markdown('## Sightseeing')
+            if ui_result.sightseeing_spots:
+                for spot in ui_result.sightseeing_spots:
+                    with st.container(border = True):
+                        st.markdown(f"**{spot.name}**")
+                        st.write(f"Entry: {spot.entry_fee_display or 'unknown'}")
+                        st.write(f"Opening hours: {spot.opening_hours or 'unknown'}")
+                        if spot.source_url:
+                            st.link_button('Open source', spot.source_url)
+            else:
+                st.info('No verified sightseeing spots were found.')
 
-        st.markdown('### 🗺️ Itinerary overview')
-        
+    if user_request.trip.food_drink_enabled:
+        st.markdown('## Food & Drinks')
+        if ui_result.food_and_drink_spots:
+            food_cols = st.columns(2)
+            for idx, place in enumerate(ui_result.food_and_drink_spots):
+                with food_cols[idx % 2]:
+                    with st.container(border = True):
+                        st.markdown(f"**{place.name}**")
+                        st.caption(place.venue_type.title())
+                        st.write(f"Price: {place.price_hint or 'unknown'}")
+                        st.write(f"Opening hours: {place.opening_hours or 'unknown'}")
+                        if place.source_url:
+                            st.link_button('Open source', place.source_url)
+        else:
+            st.info('No verified food & drink recommendations were found.')
+
+    st.markdown('## Itinerary')
     if ui_result.itinerary_overview:
         for day in ui_result.itinerary_overview:
             with st.expander(day.day_label, expanded = True):
@@ -675,19 +806,24 @@ def render_results() -> None:
                     type_label = stop.stop_type or 'stop'
 
                     st.markdown(f"**{idx}. {time_label} — {stop.title}**")
+                    st.caption(type_label.title())
 
                     if stop.notes:
                         st.write(stop.notes)
+                    if stop.linked_item_name:
+                        st.write(f"Reference: {stop.linked_item_name}")
+                    if stop.source_url:
+                        st.link_button('Open stop source', stop.source_url, key = f'{day.day_label}-{idx}-source')
     else:
-        st.write('No itinerary overview available.')
+        st.info('No itinerary overview available.')
 
     if ui_result.warnings:
-        st.markdown('### ⚠️ Warnings')
+        st.markdown('## Warnings')
         for warning in ui_result.warnings:
             st.warning(warning)
 
     if markdown_report:
-        st.markdown('### 📝 Report preview')
+        st.markdown('## Report Preview')
         st.caption('A short preview of the saved markdown report.')
 
         preview_markdown = build_markdown_preview(markdown_report)
@@ -719,9 +855,9 @@ def main() -> None:
         render_status_and_run(user_request)
 
     render_results()
+    render_followup_section()
     render_debug()
 
 
 if __name__ == '__main__':
     main()
-

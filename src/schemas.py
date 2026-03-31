@@ -62,6 +62,9 @@ class TripRequest(BaseModel):
     date_end: date = Field(description= 'End date of the trip.')
     
     planning_mode: PlanningMode = Field(default = PlanningMode.full_trip, description= 'Defines whether the user wants a full trip or only an event/day trip.')
+    events_enabled: bool = Field(default = True, description= 'If false, no events should be planned.')
+    sightseeing_enabled: bool = Field(default = True, description= 'If false, no sightseeing should be planned.')
+    food_drink_enabled: bool = Field(default = True, description= 'If false, no restaurant, bar, or cafe recommendations should be planned.')
     
     group_size: Optional[conint(ge=1, le=15)] = Field(default = None, description= 'Number of travel group.')
     budget: Optional[Budget] = Field(default = None, description= 'Optional budget information.')
@@ -158,11 +161,24 @@ class SightseeingSpot(BaseModel):
     source_url: str = Field(description= ' Primary URL for this spot (required for prototype)')
     
     
+class FoodDrinkSpot(BaseModel):
+    name: str = Field(description= 'Venue name.')
+    venue_type: Literal['restaurant', 'bar', 'cafe', 'other'] = Field(description= 'Venue category.')
+    area_or_district: Optional[str] = Field(default = None, description= 'Area or district')
+    address: Optional[str] = Field(default = None, description= 'Venue address if known')
+    price_hint: Optional[str] = Field(default = None, description= 'Short price hint if known, e.g. cocktails 14-18 EUR')
+    opening_hours: Optional[str] = Field(default = None, description= 'Opening hours if known')
+    why_match: str = Field(description= '1-2 sentences why this venue matches the user request.')
+    source_url: str = Field(description= 'Primary source URL for this venue.')
+
+
 class ItineraryStop(BaseModel):
     stop_type: Literal['sightseeing', 'event', 'food', 'other'] = Field(description= 'type of stop')
     title: str = Field(description= 'Display title of the stop')
     start_time: Optional[str] = Field(default = None, description= 'Suggested start time (e.g. 10:30).')
     notes: Optional[str] = Field(default = None, description= 'Short note (booking tip, why placed here, etc.).')
+    linked_item_name: Optional[str] = Field(default = None, description= 'Referenced event or place name.')
+    source_url: Optional[str] = Field(default = None, description= 'Referenced source URL.')
     
     
 class ItineraryDay(BaseModel):
@@ -197,6 +213,7 @@ class CoreResult(BaseModel):
     recommendation: Recommendation
     events: List[EventItem] = Field(default_factory=list, description= 'Up to 5 suggested events total.')
     sightseeing_spots: List[SightseeingSpot] = Field(default_factory=list, description= 'All sightseeing spots used in itinerary.')
+    food_and_drink_spots: List[FoodDrinkSpot] = Field(default_factory=list, description= 'Concrete restaurants, bars, cafes, or other food/drink venues.')
     itinerary: List[ItineraryDay] = Field(default_factory=list, description= 'Day by day itinerary.')
     sources: List[Source] = Field(default_factory=list, description= 'All sources used (preferably deduplicated).')
     warnings: List[str] = Field(default_factory=list, description= 'Missing data warnings (prices not found, etc.).')
@@ -249,11 +266,21 @@ class UIItineraryStop(BaseModel):
     start_time: Optional[str] = None
     notes: Optional[str] = None
     stop_type: Optional[str] = None
+    linked_item_name: Optional[str] = None
+    source_url: Optional[str] = None
     
     
 class UIDayOverview(BaseModel):
     day_label: str
     stops: List[UIItineraryStop] = Field(description= "Ordered itinerary stops for UI display.")
+
+
+class UIFoodDrinkSpot(BaseModel):
+    name: str
+    venue_type: str
+    price_hint: Optional[str] = None
+    opening_hours: Optional[str] = None
+    source_url: str
 
 
 class UIResult(BaseModel):
@@ -267,6 +294,7 @@ class UIResult(BaseModel):
     recommendation: Recommendation
     top_events: List[UIEventTeaser] = Field(default_factory=list, description= '2–3 events for the UI.')
     sightseeing_spots: List[UISpotItem] = Field(default_factory=list, description= 'All sightseeing spots (short).')
+    food_and_drink_spots: List[UIFoodDrinkSpot] = Field(default_factory=list, description= 'Concrete food and drink recommendations.')
     itinerary_overview: List[UIDayOverview] = Field(default_factory=list, description= 'Day overview.')
     warnings: List[str] = Field(default_factory=list)
 

@@ -29,7 +29,7 @@ def core_result_to_markdown_report(
         
     title = f"Dion's BlastIn Plan for {user_request.trip.city} ({user_request.trip.date_start} to {user_request.trip.date_end})"
     
-    sections = list[MarkdownSection] = []
+    sections: list[MarkdownSection] = []
     
     # Recommendation
     rec_lines = [f'- {s}' for s in core_result.recommendation.sentences]
@@ -63,6 +63,18 @@ def core_result_to_markdown_report(
             spot_lines.append(f'- **{s.name}** | entry: {fee} | hours: {hours} | {url}')
         sections.append(MarkdownSection(heading = 'Sightseeing / City Spots', body_markdown = '\n'.join(spot_lines)))
 
+    if core_result.food_and_drink_spots:
+        venue_lines = []
+        for place in core_result.food_and_drink_spots:
+            area = place.area_or_district or 'unknown'
+            price = place.price_hint or 'unknown'
+            hours = place.opening_hours or 'unknown'
+            url = place.source_url or 'unknown'
+            venue_lines.append(
+                f'- **{place.name}** ({place.venue_type}) | {area} | price: {price} | hours: {hours} | {url}'
+            )
+        sections.append(MarkdownSection(heading = 'Food & Drinks', body_markdown = '\n'.join(venue_lines)))
+
     # Itinerary (ItineraryDay.stops, ItineraryStop fields: stop_type, title, start_time, duration_minutes, notes)
     if core_result.itinerary:
         day_blocks = []
@@ -71,7 +83,8 @@ def core_result_to_markdown_report(
             for stop in day.stops:
                 t = stop.start_time or 'unknown'
                 note = f' — {stop.notes}' if stop.notes else ''
-                day_blocks.append(f'- **{t}** — {stop.title} ({stop.stop_type}){note}')
+                ref = f' | ref: {stop.linked_item_name}' if stop.linked_item_name else ''
+                day_blocks.append(f'- **{t}** — {stop.title} ({stop.stop_type}){ref}{note}')
             day_blocks.append('')
         sections.append(
             MarkdownSection(
