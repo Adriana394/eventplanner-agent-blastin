@@ -19,6 +19,10 @@ def make_report_filename(user_request: UserRequest, created_at_iso: str) -> str:
     created_tag = created_at_iso.replace(':', '-')
     return f'report_{created_tag}_{city}_{date_span}.md'
 
+
+def _append_url_suffix(url: str | None) -> str:
+    return f' | {url}' if url else ''
+
 def core_result_to_markdown_report(
     core_result: CoreResult,
     user_request: UserRequest,
@@ -47,8 +51,7 @@ def core_result_to_markdown_report(
             dt = e.start_datetime or 'unknown'
             area = e.address_or_area or 'unknown'
             price = (e.price.display if e.price and e.price.display else 'unknown')
-            url = e.source_url or 'unknown'
-            event_lines.append(f'- **{e.name}** | {dt} | {area} | {price} | {url}')
+            event_lines.append(f'- **{e.name}** | {dt} | {area} | {price}{_append_url_suffix(e.source_url)}')
         sections.append(MarkdownSection(heading = 'Events', body_markdown = '\n'.join(event_lines)))
     else:
         sections.append(MarkdownSection(heading = 'Events', body_markdown = 'No events found for the selected city/time window.'))
@@ -59,8 +62,7 @@ def core_result_to_markdown_report(
         for s in core_result.sightseeing_spots:
             fee = (s.entry_fee.display if s.entry_fee and s.entry_fee.display else 'unknown')
             hours = s.opening_hours or 'unknown'
-            url = s.source_url or 'unknown'
-            spot_lines.append(f'- **{s.name}** | entry: {fee} | hours: {hours} | {url}')
+            spot_lines.append(f'- **{s.name}** | entry: {fee} | hours: {hours}{_append_url_suffix(s.source_url)}')
         sections.append(MarkdownSection(heading = 'Sightseeing / City Spots', body_markdown = '\n'.join(spot_lines)))
 
     if core_result.food_and_drink_spots:
@@ -69,9 +71,8 @@ def core_result_to_markdown_report(
             area = place.area_or_district or 'unknown'
             price = place.price_hint or 'unknown'
             hours = place.opening_hours or 'unknown'
-            url = place.source_url or 'unknown'
             venue_lines.append(
-                f'- **{place.name}** ({place.venue_type}) | {area} | price: {price} | hours: {hours} | {url}'
+                f'- **{place.name}** ({place.venue_type}) | {area} | price: {price} | hours: {hours}{_append_url_suffix(place.source_url)}'
             )
         sections.append(MarkdownSection(heading = 'Food & Drinks', body_markdown = '\n'.join(venue_lines)))
 
@@ -126,6 +127,8 @@ def render_markdown(report: MarkdownReport) -> str:
     if report.sources:
         lines.append('## Sources')
         for src in report.sources:
+            if not src.url:
+                continue
             label = src.label or 'source'
             lines.append(f'- {label}: {src.url}')
         lines.append('')

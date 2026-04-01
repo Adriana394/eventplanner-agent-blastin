@@ -476,8 +476,6 @@ PLANNING_MODE_OPTIONS = {
 GROUP_SIZE_OPTIONS = list(range(1, 16))
 SIGHTSEEING_MODE_OPTIONS = ['No preference', 'Indoor', 'Outdoor', 'Mixed']
 MAX_FREE_TEXT_CHARS = 220
-
-
 def init_session_state() -> None:
     defaults = {
         'last_user_request': None,
@@ -988,7 +986,6 @@ def render_results() -> None:
             f'Group: {user_request.trip.group_size}',
         ]
     )
-
     st.markdown(
         "<div class='dion-brief'>" + "".join([f"<span class='dion-pill'>{item}</span>" for item in greeting]) + "</div>",
         unsafe_allow_html = True,
