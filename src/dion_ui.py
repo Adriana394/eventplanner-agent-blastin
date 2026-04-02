@@ -3,7 +3,7 @@ import sys
 import os
 import traceback
 import asyncio
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 import streamlit as st
 from dotenv import load_dotenv
@@ -476,6 +476,199 @@ PLANNING_MODE_OPTIONS = {
 GROUP_SIZE_OPTIONS = list(range(1, 16))
 SIGHTSEEING_MODE_OPTIONS = ['No preference', 'Indoor', 'Outdoor', 'Mixed']
 MAX_FREE_TEXT_CHARS = 220
+UI_TEXT = {
+    'en': {
+        'execution': 'Execution',
+        'building_plan': 'Dion is building the plan',
+        'preparing_context': 'Preparing planner context...',
+        'collecting_items': 'Collecting events and places...',
+        'composing_itinerary': 'Composing the itinerary...',
+        'saving_report': 'Saving report...',
+        'plan_created': 'Plan and report created successfully.',
+        'planner_failed': 'The planner run failed. Review the current MCP and agent setup.',
+        'recommendation_heading': "Dion's Recommendation",
+        'result_block': 'Result Block',
+        'awaiting_output': 'Awaiting Output',
+        'no_plan_title': 'No plan generated yet',
+        'no_plan_body': 'Define the trip, submit the planner form, and Dion will populate the result view here.',
+        'traveler': 'Traveler',
+        'city': 'City',
+        'dates': 'Dates',
+        'group': 'Group',
+        'events': 'Events',
+        'sightseeing': 'Sightseeing',
+        'food_drinks': 'Food & Drinks',
+        'selected_events': 'Selected Events',
+        'city_highlights': 'City Highlights',
+        'trip_flow': 'Trip Flow',
+        'warnings': 'Warnings',
+        'personal_note': "Dion's Personal Note",
+        'report_preview': 'Report Preview',
+        'show_report_data': 'Show structured report data',
+        'show_request_data': 'Show structured request',
+        'show_core_result': 'Show structured core result',
+        'no_events_found': 'No verified events were found.',
+        'no_sightseeing_found': 'No verified sightseeing spots were found.',
+        'no_food_found': 'No verified food & drink recommendations were found.',
+        'no_itinerary': 'No itinerary overview available.',
+        'time': 'Time',
+        'venue': 'Venue',
+        'price': 'Price',
+        'entry': 'Entry',
+        'opening_hours': 'Opening hours',
+        'open_source': 'Open source',
+        'open_ticket_page': 'Open ticket page',
+        'open_stop_source': 'Open stop source',
+        'reference': 'Reference',
+        'time_unknown': 'Time unknown',
+        'unknown_day': 'Unknown day',
+        'followup': 'Follow-up',
+        'refine_plan': 'Refine the plan',
+        'followup_body': 'Ask Dion to revise the current plan instead of creating a new one from scratch.',
+        'followup_prompt': 'What should Dion adjust?',
+        'followup_placeholder': 'e.g. Make Friday more elegant, reduce sightseeing, and add a stronger bar recommendation.',
+        'update_plan': 'Update current plan',
+        'followup_required': 'Please enter a follow-up request first.',
+        'followup_or_form_required': 'Please enter a follow-up request or change the planning selections first.',
+        'revising_plan': 'Dion is revising the current plan...',
+        'saving_updated_report': 'Saving updated report...',
+        'plan_updated': 'Plan updated successfully.',
+        'update_failed': 'Updating the plan failed. Review the current setup.',
+        'new_planning_run': 'New Planning Run',
+        'start_from_scratch': 'Start from scratch',
+        'reset_body': 'Discard the current planning session and open a fresh planning form for a completely new trip brief.',
+        'reset_button': 'Reset Dion and create a new plan',
+        'recommendation_preview': 'Recommendation',
+    },
+    'de': {
+        'execution': 'Ausführung',
+        'building_plan': 'Dion erstellt gerade den Plan',
+        'preparing_context': 'Planungskontext wird vorbereitet...',
+        'collecting_items': 'Events und Orte werden gesammelt...',
+        'composing_itinerary': 'Reiseplan wird zusammengestellt...',
+        'saving_report': 'Bericht wird gespeichert...',
+        'plan_created': 'Plan und Bericht wurden erfolgreich erstellt.',
+        'planner_failed': 'Der Planungslauf ist fehlgeschlagen. Bitte prüfe die aktuelle MCP- und Agent-Konfiguration.',
+        'recommendation_heading': 'Dions Empfehlung',
+        'result_block': 'Ergebnis',
+        'awaiting_output': 'Warten auf Ausgabe',
+        'no_plan_title': 'Noch kein Plan erstellt',
+        'no_plan_body': 'Lege die Reise fest und sende das Formular ab. Dion füllt dann hier die Ergebnisansicht.',
+        'traveler': 'Reisende Person',
+        'city': 'Stadt',
+        'dates': 'Daten',
+        'group': 'Gruppe',
+        'events': 'Events',
+        'sightseeing': 'Sightseeing',
+        'food_drinks': 'Essen & Drinks',
+        'selected_events': 'Ausgewählte Events',
+        'city_highlights': 'Stadt-Highlights',
+        'trip_flow': 'Reiseverlauf',
+        'warnings': 'Hinweise',
+        'personal_note': 'Dions persönliche Notiz',
+        'report_preview': 'Berichtsvorschau',
+        'show_report_data': 'Strukturierte Berichtsdaten anzeigen',
+        'show_request_data': 'Strukturierte Anfrage anzeigen',
+        'show_core_result': 'Strukturiertes Kernergebnis anzeigen',
+        'no_events_found': 'Es wurden keine verifizierten Events gefunden.',
+        'no_sightseeing_found': 'Es wurden keine verifizierten Sightseeing-Orte gefunden.',
+        'no_food_found': 'Es wurden keine verifizierten Essen- und Drink-Empfehlungen gefunden.',
+        'no_itinerary': 'Keine Itinerary-Übersicht verfügbar.',
+        'time': 'Uhrzeit',
+        'venue': 'Ort',
+        'price': 'Preis',
+        'entry': 'Eintritt',
+        'opening_hours': 'Öffnungszeiten',
+        'open_source': 'Quelle öffnen',
+        'open_ticket_page': 'Ticketseite öffnen',
+        'open_stop_source': 'Stopp-Quelle öffnen',
+        'reference': 'Referenz',
+        'time_unknown': 'Uhrzeit unbekannt',
+        'unknown_day': 'Unbekannter Tag',
+        'followup': 'Follow-up',
+        'refine_plan': 'Plan anpassen',
+        'followup_body': 'Bitte Dion, den aktuellen Plan gezielt zu überarbeiten statt einen komplett neuen zu erstellen.',
+        'followup_prompt': 'Was soll Dion anpassen?',
+        'followup_placeholder': 'z. B. Mach den Freitag eleganter, reduziere Sightseeing und ergänze eine stärkere Bar-Empfehlung.',
+        'update_plan': 'Aktuellen Plan aktualisieren',
+        'followup_required': 'Bitte gib zuerst einen Follow-up-Wunsch ein.',
+        'followup_or_form_required': 'Bitte gib einen Follow-up-Wunsch ein oder ändere zuerst die Planungsauswahl.',
+        'revising_plan': 'Dion überarbeitet gerade den aktuellen Plan...',
+        'saving_updated_report': 'Aktualisierter Bericht wird gespeichert...',
+        'plan_updated': 'Plan wurde erfolgreich aktualisiert.',
+        'update_failed': 'Die Aktualisierung des Plans ist fehlgeschlagen. Bitte prüfe das aktuelle Setup.',
+        'new_planning_run': 'Neuer Planlauf',
+        'start_from_scratch': 'Komplett neu starten',
+        'reset_body': 'Verwirf die aktuelle Planungssitzung und öffne ein frisches Formular für einen komplett neuen Plan.',
+        'reset_button': 'Dion zurücksetzen und neuen Plan erstellen',
+        'recommendation_preview': 'Empfehlung',
+    },
+}
+
+
+def _format_trip_date(value: date | str | None) -> str:
+    if value is None:
+        return 'unknown'
+    if isinstance(value, date):
+        return value.strftime('%d.%m.%Y')
+
+    parsed = _try_parse_datetime(value)
+    if parsed is not None:
+        return parsed.strftime('%d.%m.%Y')
+
+    try:
+        return date.fromisoformat(str(value)).strftime('%d.%m.%Y')
+    except ValueError:
+        return str(value)
+
+
+def _try_parse_datetime(value: str | None) -> datetime | None:
+    if not value:
+        return None
+
+    normalized = value.strip()
+    if normalized.endswith('Z'):
+        normalized = normalized[:-1] + '+00:00'
+
+    try:
+        return datetime.fromisoformat(normalized)
+    except ValueError:
+        return None
+
+
+def _format_event_datetime(value: str | None) -> str:
+    parsed = _try_parse_datetime(value)
+    if parsed is None:
+        return value or 'unknown'
+    return parsed.strftime('%a, %d.%m.%Y, %H:%M')
+
+
+def _format_day_label(value: str | None) -> str:
+    if not value:
+        return 'Unknown day'
+
+    parsed = _try_parse_datetime(value)
+    if parsed is not None:
+        return parsed.strftime('%A, %d.%m.%Y')
+
+    try:
+        return date.fromisoformat(value).strftime('%A, %d.%m.%Y')
+    except ValueError:
+        return value
+
+
+def _get_ui_language(user_request: UserRequest | None = None) -> str:
+    request = user_request or st.session_state.get('last_user_request')
+    if request and request.delivery and getattr(request.delivery, 'language', None):
+        return 'de' if request.delivery.language.value == 'Deutsch' else 'en'
+    return 'en'
+
+
+def _t(key: str, user_request: UserRequest | None = None) -> str:
+    language = _get_ui_language(user_request)
+    return UI_TEXT[language].get(key, UI_TEXT['en'][key])
+
+
 def init_session_state() -> None:
     defaults = {
         'last_user_request': None,
@@ -484,6 +677,7 @@ def init_session_state() -> None:
         'last_markdown_report': None,
         'last_error': None,
         'followup_text': '',
+        'planner_form_version': 0,
         'dion_scope_events': True,
         'dion_scope_sightseeing': True,
         'dion_scope_food': True,
@@ -491,6 +685,26 @@ def init_session_state() -> None:
     for key, value in defaults.items():
         if key not in st.session_state:
             st.session_state[key] = value
+
+
+def reset_planner_state() -> None:
+    st.session_state['last_user_request'] = None
+    st.session_state['last_core_result'] = None
+    st.session_state['last_ui_result'] = None
+    st.session_state['last_markdown_report'] = None
+    st.session_state['last_error'] = None
+    st.session_state['followup_text'] = ''
+    st.session_state['dion_scope_events'] = True
+    st.session_state['dion_scope_sightseeing'] = True
+    st.session_state['dion_scope_food'] = True
+    st.session_state['planner_form_version'] += 1
+
+
+def _build_form_change_followup_message() -> str:
+    return (
+        'Revise the existing plan to match the updated planning form selections and constraints. '
+        'Treat the current form values as the new baseline request and update the plan accordingly.'
+    )
 
 
 def build_user_request(
@@ -627,7 +841,7 @@ def render_hero() -> None:
     )
 
 
-def render_scope_controls() -> tuple[bool, bool, bool]:
+def render_scope_controls(disabled: bool = False) -> tuple[bool, bool, bool]:
     st.markdown(
         """
         <div class='dion-panel dion-section-space'>
@@ -654,6 +868,7 @@ def render_scope_controls() -> tuple[bool, bool, bool]:
         events_enabled = st.checkbox(
             'Include events',
             key = 'dion_scope_events',
+            disabled = disabled,
         )
 
     with col_2:
@@ -669,6 +884,7 @@ def render_scope_controls() -> tuple[bool, bool, bool]:
         sightseeing_enabled = st.checkbox(
             'Include sightseeing',
             key = 'dion_scope_sightseeing',
+            disabled = disabled,
         )
 
     with col_3:
@@ -684,6 +900,7 @@ def render_scope_controls() -> tuple[bool, bool, bool]:
         food_drink_enabled = st.checkbox(
             'Include food & drinks',
             key = 'dion_scope_food',
+            disabled = disabled,
         )
 
     return events_enabled, sightseeing_enabled, food_drink_enabled
@@ -694,7 +911,60 @@ def render_form(
     sightseeing_enabled: bool,
     food_drink_enabled: bool,
 ) -> UserRequest | None:
-    with st.form('dion_planner_form', clear_on_submit = False):
+    existing_request = st.session_state.get('last_user_request')
+    has_existing_plan = st.session_state.get('last_core_result') is not None
+
+    user_name_value = existing_request.user.name if existing_request and existing_request.user else ''
+    city_value = existing_request.trip.city if existing_request else ''
+    country_value = existing_request.trip.country if existing_request and existing_request.trip.country else ''
+    date_start_value = existing_request.trip.date_start if existing_request else date.today() + timedelta(days = 7)
+    date_end_value = existing_request.trip.date_end if existing_request else date.today() + timedelta(days = 9)
+    group_size_value = existing_request.trip.group_size if existing_request and existing_request.trip.group_size else GROUP_SIZE_OPTIONS[0]
+    planning_mode_value = (
+        existing_request.trip.planning_mode.value
+        if existing_request and existing_request.trip.planning_mode
+        else PLANNING_MODE_OPTIONS['Full Trip']
+    )
+    planning_mode_index = list(PLANNING_MODE_OPTIONS.values()).index(planning_mode_value)
+
+    min_budget_default = 0
+    max_budget_default = 0
+    if existing_request and existing_request.trip.budget:
+        min_budget_default = int(existing_request.trip.budget.min_budget or 0)
+        max_budget_default = int(existing_request.trip.budget.max_budget or 0)
+
+    vibe_value = existing_request.events.vibe if existing_request and existing_request.events and existing_request.events.vibe else ''
+    categories_value = existing_request.events.categories if existing_request and existing_request.events and existing_request.events.categories else ''
+    time_pref_value = (
+        existing_request.events.time_pref.value
+        if existing_request and existing_request.events and existing_request.events.time_pref
+        else TIME_PREF_OPTIONS['No preference']
+    )
+    time_pref_index = list(TIME_PREF_OPTIONS.values()).index(time_pref_value)
+    free_only_value = bool(existing_request.events.free_only) if existing_request and existing_request.events else False
+
+    sightseeing_interests_value = (
+        existing_request.sightseeing.interests
+        if existing_request and existing_request.sightseeing and existing_request.sightseeing.interests
+        else ''
+    )
+    sightseeing_mode_value = (
+        existing_request.sightseeing.indoor_outdoor.title()
+        if existing_request and existing_request.sightseeing and existing_request.sightseeing.indoor_outdoor
+        else 'No preference'
+    )
+    sightseeing_mode_index = SIGHTSEEING_MODE_OPTIONS.index(sightseeing_mode_value)
+    sightseeing_free_only_value = bool(existing_request.sightseeing.free_only) if existing_request and existing_request.sightseeing else False
+
+    must_avoid_value = ', '.join(existing_request.itinerary.must_avoid) if existing_request and existing_request.itinerary and existing_request.itinerary.must_avoid else ''
+    language_value = (
+        existing_request.delivery.language.value
+        if existing_request and existing_request.delivery and existing_request.delivery.language
+        else LANGUAGE_OPTIONS['English']
+    )
+    language_index = list(LANGUAGE_OPTIONS.values()).index(language_value)
+
+    with st.form(f"dion_planner_form_{st.session_state['planner_form_version']}", clear_on_submit = False):
         st.markdown(
             """
             <div class='dion-soft-label'>Planning Input</div>
@@ -708,9 +978,9 @@ def render_form(
         with top_left:
             st.markdown("<div class='dion-form-section'>", unsafe_allow_html = True)
             st.markdown('### Traveler & Destination')
-            user_name = st.text_input('Name', placeholder = 'e.g. Adriana', max_chars = 40)
-            city = st.text_input('City', placeholder = 'e.g. Berlin', max_chars = 40)
-            country = st.text_input('Country', placeholder = 'e.g. Germany', max_chars = 40)
+            user_name = st.text_input('Name', value = user_name_value, placeholder = 'e.g. Adriana', max_chars = 40)
+            city = st.text_input('City', value = city_value, placeholder = 'e.g. Berlin', max_chars = 40)
+            country = st.text_input('Country', value = country_value, placeholder = 'e.g. Germany', max_chars = 40)
             st.markdown("</div>", unsafe_allow_html = True)
 
             st.markdown("<div class='dion-form-section'>", unsafe_allow_html = True)
@@ -719,24 +989,28 @@ def render_form(
             with col_date_1:
                 date_start = st.date_input(
                     'Start date',
-                    value = date.today() + timedelta(days = 7),
+                    value = date_start_value,
                     min_value = date.today(),
                 )
             with col_date_2:
                 date_end = st.date_input(
                     'End date',
-                    value = date.today() + timedelta(days = 9),
+                    value = date_end_value,
                     min_value = date.today(),
                 )
 
             col_setup_1, col_setup_2 = st.columns(2)
             with col_setup_1:
-                group_size = st.selectbox('Group size', options = GROUP_SIZE_OPTIONS, index = 0)
+                group_size = st.selectbox(
+                    'Group size',
+                    options = GROUP_SIZE_OPTIONS,
+                    index = GROUP_SIZE_OPTIONS.index(group_size_value),
+                )
             with col_setup_2:
                 planning_mode_label = st.selectbox(
                     'Planning mode',
                     options = list(PLANNING_MODE_OPTIONS.keys()),
-                    index = 0,
+                    index = planning_mode_index,
                 )
             planning_mode = PLANNING_MODE_OPTIONS[planning_mode_label]
             st.markdown("</div>", unsafe_allow_html = True)
@@ -745,9 +1019,9 @@ def render_form(
             st.markdown('### Budget')
             col_budget_1, col_budget_2 = st.columns(2)
             with col_budget_1:
-                min_budget = st.number_input('Minimum budget', min_value = 0, value = 0, step = 10)
+                min_budget = st.number_input('Minimum budget', min_value = 0, value = min_budget_default, step = 10)
             with col_budget_2:
-                max_budget = st.number_input('Maximum budget', min_value = 0, value = 0, step = 10)
+                max_budget = st.number_input('Maximum budget', min_value = 0, value = max_budget_default, step = 10)
             st.markdown("</div>", unsafe_allow_html = True)
 
         with top_right:
@@ -760,6 +1034,7 @@ def render_form(
                 st.markdown('### Event Direction')
                 vibe = st.text_input(
                     'Desired vibe',
+                    value = vibe_value,
                     placeholder = 'e.g. elegant, energetic, underground, classical',
                     max_chars = 60,
                 )
@@ -768,12 +1043,17 @@ def render_form(
                     time_pref_label = st.selectbox(
                         'Preferred event time',
                         options = list(TIME_PREF_OPTIONS.keys()),
-                        index = 0,
+                        index = time_pref_index,
                     )
                 with col_event_2:
-                    free_only = st.selectbox('Only free events?', options = ['No', 'Yes'], index = 0) == 'Yes'
+                    free_only = st.selectbox(
+                        'Only free events?',
+                        options = ['No', 'Yes'],
+                        index = 1 if free_only_value else 0,
+                    ) == 'Yes'
                 categories = st.text_input(
                     'Event categories',
+                    value = categories_value,
                     placeholder = 'e.g. concert, show, club, theatre',
                     max_chars = 60,
                 )
@@ -787,6 +1067,7 @@ def render_form(
                 st.markdown('### City Direction')
                 sightseeing_interests = st.text_input(
                     'Sightseeing interests',
+                    value = sightseeing_interests_value,
                     placeholder = 'e.g. landmarks, viewpoints, art, history',
                     max_chars = 60,
                 )
@@ -795,13 +1076,13 @@ def render_form(
                     sightseeing_mode = st.selectbox(
                         'Sightseeing mode',
                         options = SIGHTSEEING_MODE_OPTIONS,
-                        index = 0,
+                        index = sightseeing_mode_index,
                     )
                 with col_sight_2:
                     sightseeing_free_only = st.selectbox(
                         'Only free sightseeing?',
                         options = ['No', 'Yes'],
-                        index = 0,
+                        index = 1 if sightseeing_free_only_value else 0,
                     ) == 'Yes'
                 st.markdown("</div>", unsafe_allow_html = True)
 
@@ -809,26 +1090,90 @@ def render_form(
         st.markdown('### Constraints')
         must_avoid_raw = st.text_input(
             'Avoid list',
+            value = must_avoid_value,
             placeholder = 'e.g. family events, museums, luxury dining',
             max_chars = 90,
         )
         st.markdown("</div>", unsafe_allow_html = True)
 
         st.markdown("<div class='dion-form-section'>", unsafe_allow_html = True)
-        st.markdown('### Output & Notes')
-        language_label = st.selectbox('Output language', options = list(LANGUAGE_OPTIONS.keys()), index = 0)
-        user_notes = st.text_area(
-            'Short planning note',
-            placeholder = 'e.g. We want one elegant highlight and one memorable late-night venue.',
-            max_chars = MAX_FREE_TEXT_CHARS,
-            height = 170,
+        if not has_existing_plan:
+            st.markdown('### Output & Notes')
+        else:
+            st.markdown(f"### {_t('followup', existing_request)}")
+
+        language_label = st.selectbox(
+            'Output language',
+            options = list(LANGUAGE_OPTIONS.keys()),
+            index = language_index,
         )
-        st.caption(f'{len(user_notes)}/{MAX_FREE_TEXT_CHARS} characters used')
+        user_notes = ''
+        followup_text = ''
+        if not has_existing_plan:
+            user_notes = st.text_area(
+                'Short planning note',
+                placeholder = 'e.g. We want one elegant highlight and one memorable late-night venue.',
+                max_chars = MAX_FREE_TEXT_CHARS,
+                height = 170,
+            )
+            st.caption(f'{len(user_notes)}/{MAX_FREE_TEXT_CHARS} characters used')
+        else:
+            st.markdown(_t('followup_body', existing_request))
+            followup_text = st.text_area(
+                _t('followup_prompt', existing_request),
+                value = st.session_state.get('followup_text', ''),
+                placeholder = _t('followup_placeholder', existing_request),
+                max_chars = 320,
+                height = 120,
+            )
         st.markdown("</div>", unsafe_allow_html = True)
 
-        submitted = st.form_submit_button('Build plan with Dion', use_container_width = True)
+        submitted = st.form_submit_button(
+            _t('update_plan', existing_request) if has_existing_plan else 'Build plan with Dion',
+            use_container_width = True,
+        )
         if not submitted:
             return None
+
+    if has_existing_plan:
+        min_budget_value = None if min_budget == 0 else int(min_budget)
+        max_budget_value = None if max_budget == 0 else int(max_budget)
+
+        updated_request = build_user_request(
+            user_name = user_name,
+            city = city,
+            country = country,
+            date_start = date_start,
+            date_end = date_end,
+            planning_mode = planning_mode,
+            events_enabled = events_enabled,
+            sightseeing_enabled = sightseeing_enabled,
+            food_drink_enabled = food_drink_enabled,
+            group_size = int(group_size),
+            min_budget = min_budget_value,
+            max_budget = max_budget_value,
+            vibe = vibe,
+            categories = categories,
+            time_pref_label = time_pref_label,
+            free_only = free_only,
+            sightseeing_interests = sightseeing_interests,
+            sightseeing_mode = sightseeing_mode,
+            sightseeing_free_only = sightseeing_free_only,
+            must_avoid_raw = must_avoid_raw,
+            language_label = language_label,
+            user_notes = '',
+        )
+
+        normalized_followup_text = followup_text.strip()
+        request_changed = updated_request.model_dump(mode = 'json') != existing_request.model_dump(mode = 'json')
+
+        if not normalized_followup_text and not request_changed:
+            st.warning(_t('followup_or_form_required', existing_request))
+            return None
+
+        effective_followup_text = normalized_followup_text or _build_form_change_followup_message()
+        run_followup_update(updated_request, st.session_state['last_core_result'], effective_followup_text)
+        return None
 
     min_budget_value = None if min_budget == 0 else int(min_budget)
     max_budget_value = None if max_budget == 0 else int(max_budget)
@@ -881,10 +1226,10 @@ def render_form(
 
 def render_status_and_run(user_request: UserRequest) -> None:
     st.markdown(
-        """
+        f"""
         <div class='dion-panel'>
-            <div class='dion-soft-label'>Execution</div>
-            <h2>Dion is building the plan</h2>
+            <div class='dion-soft-label'>{_t('execution', user_request)}</div>
+            <h2>{_t('building_plan', user_request)}</h2>
         </div>
         """,
         unsafe_allow_html = True,
@@ -899,18 +1244,18 @@ def render_status_and_run(user_request: UserRequest) -> None:
     progress_bar = st.progress(0)
 
     try:
-        status_box.info('Preparing planner context...')
+        status_box.info(_t('preparing_context', user_request))
         progress_bar.progress(18)
 
-        status_box.info('Collecting events and places...')
+        status_box.info(_t('collecting_items', user_request))
         progress_bar.progress(44)
 
-        status_box.info('Composing the itinerary...')
+        status_box.info(_t('composing_itinerary', user_request))
         progress_bar.progress(76)
 
         result = asyncio.run(run_full_planner_flow(user_request))
 
-        status_box.info('Saving report...')
+        status_box.info(_t('saving_report', user_request))
         progress_bar.progress(92)
 
         st.session_state['last_user_request'] = user_request
@@ -920,18 +1265,53 @@ def render_status_and_run(user_request: UserRequest) -> None:
         st.session_state['last_error'] = None
 
         progress_bar.progress(100)
-        status_box.success('Plan and report created successfully.')
+        status_box.success(_t('plan_created', user_request))
     except Exception as exc:
         traceback.print_exc()
         st.session_state['last_error'] = str(exc)
-        status_box.error('The planner run failed. Review the current MCP and agent setup.')
+        status_box.error(_t('planner_failed', user_request))
+
+
+def run_followup_update(user_request: UserRequest, core_result, followup_text: str) -> None:
+    status_box = st.empty()
+    progress_bar = st.progress(0)
+
+    try:
+        status_box.info(_t('revising_plan', user_request))
+        progress_bar.progress(42)
+
+        result = asyncio.run(
+            run_followup_planner_flow(
+                original_request = user_request,
+                current_plan = core_result,
+                followup_message = followup_text,
+            )
+        )
+
+        status_box.info(_t('saving_updated_report', user_request))
+        progress_bar.progress(86)
+
+        st.session_state['last_core_result'] = result['core_result']
+        st.session_state['last_ui_result'] = result['ui_result']
+        st.session_state['last_markdown_report'] = result['markdown_report']
+        st.session_state['last_user_request'] = user_request
+        st.session_state['last_error'] = None
+        st.session_state['followup_text'] = ''
+
+        progress_bar.progress(100)
+        status_box.success(_t('plan_updated', user_request))
+        st.rerun()
+    except Exception as exc:
+        traceback.print_exc()
+        st.session_state['last_error'] = str(exc)
+        status_box.error(_t('update_failed', user_request))
 
 
 def build_markdown_preview(markdown_report, max_sections: int = 3, max_chars: int = 1700) -> str:
     parts = [f"# {markdown_report.title}\n"]
 
     if markdown_report.recommendation and markdown_report.recommendation.sentences:
-        parts.append("## Recommendation\n")
+        parts.append(f"## {_t('recommendation_preview')}\n")
         for sentence in markdown_report.recommendation.sentences:
             parts.append(f"- {sentence}\n")
         parts.append("\n")
@@ -945,11 +1325,11 @@ def build_markdown_preview(markdown_report, max_sections: int = 3, max_chars: in
     return preview
 
 
-def render_result_block(title: str, body_fn) -> None:
+def render_result_block(title: str, body_fn, user_request: UserRequest | None = None) -> None:
     st.markdown(
         f"""
         <div class='dion-panel'>
-            <div class='dion-soft-label'>Result Block</div>
+            <div class='dion-soft-label'>{_t('result_block', user_request)}</div>
             <h2>{title}</h2>
         </div>
         """,
@@ -978,12 +1358,12 @@ def render_results() -> None:
 
     greeting = []
     if user_request.user.name:
-        greeting.append(f'Traveler: {user_request.user.name}')
+        greeting.append(f"{_t('traveler', user_request)}: {user_request.user.name}")
     greeting.extend(
         [
-            f'City: {user_request.trip.city}',
-            f'Dates: {user_request.trip.date_start} → {user_request.trip.date_end}',
-            f'Group: {user_request.trip.group_size}',
+            f"{_t('city', user_request)}: {user_request.trip.city}",
+            f"{_t('dates', user_request)}: {_format_trip_date(user_request.trip.date_start)} → {_format_trip_date(user_request.trip.date_end)}",
+            f"{_t('group', user_request)}: {user_request.trip.group_size}",
         ]
     )
     st.markdown(
@@ -994,20 +1374,21 @@ def render_results() -> None:
     metric_1, metric_2, metric_3 = st.columns(3)
     with metric_1:
         st.markdown("<div class='dion-metric-card'>", unsafe_allow_html = True)
-        st.metric('Events', len(ui_result.top_events))
+        st.metric(_t('events', user_request), len(ui_result.top_events))
         st.markdown("</div>", unsafe_allow_html = True)
     with metric_2:
         st.markdown("<div class='dion-metric-card'>", unsafe_allow_html = True)
-        st.metric('Sightseeing', len(ui_result.sightseeing_spots))
+        st.metric(_t('sightseeing', user_request), len(ui_result.sightseeing_spots))
         st.markdown("</div>", unsafe_allow_html = True)
     with metric_3:
         st.markdown("<div class='dion-metric-card'>", unsafe_allow_html = True)
-        st.metric('Food & Drinks', len(ui_result.food_and_drink_spots))
+        st.metric(_t('food_drinks', user_request), len(ui_result.food_and_drink_spots))
         st.markdown("</div>", unsafe_allow_html = True)
 
     render_result_block(
-        'Dion’s Recommendation',
+        _t('recommendation_heading', user_request),
         lambda: [st.write(f'- {sentence}') for sentence in ui_result.recommendation.sentences],
+        user_request,
     )
 
     top_left, top_right = st.columns(2)
@@ -1015,196 +1396,166 @@ def render_results() -> None:
     with top_left:
         if user_request.trip.events_enabled:
             render_result_block(
-                'Selected Events',
+                _t('selected_events', user_request),
                 lambda: (
-                    [st.info('No verified events were found.')]
+                    [st.info(_t('no_events_found', user_request))]
                     if not ui_result.top_events
                     else [
                         _render_card(
                             event.name,
                             [
-                                f"Time: {event.start_datetime or 'unknown'}",
-                                f"Venue: {event.venue_name or 'unknown'}",
-                                f"Price: {event.price_display or 'unknown'}",
+                                f"{_t('time', user_request)}: {_format_event_datetime(event.start_datetime)}",
+                                f"{_t('venue', user_request)}: {event.venue_name or 'unknown'}",
+                                f"{_t('price', user_request)}: {event.price_display or 'unknown'}",
                             ],
                             None,
                             getattr(event, 'ticket_url', None),
+                            user_request,
                         )
                         for event in ui_result.top_events
                     ]
                 ),
+                user_request,
             )
 
     with top_right:
         if user_request.trip.sightseeing_enabled:
             render_result_block(
-                'City Highlights',
+                _t('city_highlights', user_request),
                 lambda: (
-                    [st.info('No verified sightseeing spots were found.')]
+                    [st.info(_t('no_sightseeing_found', user_request))]
                     if not ui_result.sightseeing_spots
                     else [
                         _render_card(
                             spot.name,
                             [
-                                f"Entry: {spot.entry_fee_display or 'unknown'}",
-                                f"Opening hours: {spot.opening_hours or 'unknown'}",
+                                f"{_t('entry', user_request)}: {spot.entry_fee_display or 'unknown'}",
+                                f"{_t('opening_hours', user_request)}: {spot.opening_hours or 'unknown'}",
                             ],
                             spot.source_url,
+                            user_request = user_request,
                         )
                         for spot in ui_result.sightseeing_spots
                     ]
                 ),
+                user_request,
             )
 
     if user_request.trip.food_drink_enabled:
         render_result_block(
-            'Food & Drinks',
+            _t('food_drinks', user_request),
             lambda: (
-                [st.info('No verified food & drink recommendations were found.')]
+                [st.info(_t('no_food_found', user_request))]
                 if not ui_result.food_and_drink_spots
-                else _render_food_grid(ui_result.food_and_drink_spots)
+                else _render_food_grid(ui_result.food_and_drink_spots, user_request)
             ),
+            user_request,
         )
 
     render_result_block(
-        'Trip Flow',
+        _t('trip_flow', user_request),
         lambda: (
-            [st.info('No itinerary overview available.')]
+            [st.info(_t('no_itinerary', user_request))]
             if not ui_result.itinerary_overview
             else [
-                _render_day_overview(day)
+                _render_day_overview(day, user_request)
                 for day in ui_result.itinerary_overview
             ]
         ),
+        user_request,
     )
 
     if ui_result.warnings:
         render_result_block(
-            'Warnings',
+            _t('warnings', user_request),
             lambda: [st.warning(warning) for warning in ui_result.warnings],
+            user_request,
         )
 
     if ui_result.personal_feedback:
         render_result_block(
-            "Dion's Personal Note",
+            _t('personal_note', user_request),
             lambda: [st.write(f'- {line}') for line in ui_result.personal_feedback],
+            user_request,
         )
 
     if markdown_report:
         render_result_block(
-            'Report Preview',
+            _t('report_preview', user_request),
             lambda: st.markdown(build_markdown_preview(markdown_report)),
+            user_request,
         )
 
-        with st.expander('Show structured report data'):
+        with st.expander(_t('show_report_data', user_request)):
             st.json(markdown_report.model_dump())
 
-    with st.expander('Show structured request'):
+    with st.expander(_t('show_request_data', user_request)):
         st.json(st.session_state['last_user_request'].model_dump())
 
-    with st.expander('Show structured core result'):
+    with st.expander(_t('show_core_result', user_request)):
         st.json(st.session_state['last_core_result'].model_dump())
 
 
-def _render_card(title: str, lines: list[str], source_url: str | None = None, secondary_url: str | None = None) -> None:
+def _render_card(title: str, lines: list[str], source_url: str | None = None, secondary_url: str | None = None, user_request: UserRequest | None = None) -> None:
     with st.container(border = True):
         st.markdown(f"**{title}**")
         for line in lines:
             st.write(line)
         if source_url:
-            st.link_button('Open source', source_url)
+            st.link_button(_t('open_source', user_request), source_url)
         if secondary_url:
-            st.link_button('Open ticket page', secondary_url)
+            st.link_button(_t('open_ticket_page', user_request), secondary_url)
 
 
-def _render_food_grid(food_items) -> None:
+def _render_food_grid(food_items, user_request: UserRequest | None = None) -> None:
     cols = st.columns(2)
     for idx, place in enumerate(food_items):
         with cols[idx % 2]:
             with st.container(border = True):
                 st.markdown(f"**{place.name}**")
                 st.caption(place.venue_type.title())
-                st.write(f"Price: {place.price_hint or 'unknown'}")
-                st.write(f"Opening hours: {place.opening_hours or 'unknown'}")
+                st.write(f"{_t('price', user_request)}: {place.price_hint or 'unknown'}")
+                st.write(f"{_t('opening_hours', user_request)}: {place.opening_hours or 'unknown'}")
                 if place.source_url:
-                    st.link_button('Open source', place.source_url)
+                    st.link_button(_t('open_source', user_request), place.source_url)
 
 
-def _render_day_overview(day) -> None:
-    with st.expander(day.day_label, expanded = True):
+def _render_day_overview(day, user_request: UserRequest | None = None) -> None:
+    with st.expander(_format_day_label(day.day_label), expanded = True):
         for idx, stop in enumerate(day.stops, start = 1):
-            st.markdown(f"**{idx}. {stop.start_time or 'Time unknown'} — {stop.title}**")
+            st.markdown(f"**{idx}. {stop.start_time or _t('time_unknown', user_request)} — {stop.title}**")
             st.caption((stop.stop_type or 'stop').title())
             if stop.notes:
                 st.write(stop.notes)
             if stop.linked_item_name:
-                st.write(f"Reference: {stop.linked_item_name}")
+                st.write(f"{_t('reference', user_request)}: {stop.linked_item_name}")
             if stop.source_url:
-                st.link_button('Open stop source', stop.source_url)
+                st.link_button(_t('open_stop_source', user_request), stop.source_url)
 
 
 def render_followup_section() -> None:
-    user_request = st.session_state['last_user_request']
-    core_result = st.session_state['last_core_result']
+    return
 
-    if not user_request or not core_result:
+
+def render_reset_section() -> None:
+    user_request = st.session_state.get('last_user_request')
+    if not st.session_state.get('last_core_result'):
         return
 
     st.markdown(
-        """
+        f"""
         <div class='dion-panel'>
-            <div class='dion-soft-label'>Follow-up</div>
-            <h2>Refine the plan</h2>
-            <p>Ask Dion to revise the current plan instead of creating a new one from scratch.</p>
+            <div class='dion-soft-label'>{_t('new_planning_run', user_request)}</div>
+            <h2>{_t('start_from_scratch', user_request)}</h2>
+            <p>{_t('reset_body', user_request)}</p>
         </div>
         """,
         unsafe_allow_html = True,
     )
 
-    followup_text = st.text_area(
-        'What should Dion adjust?',
-        value = st.session_state.get('followup_text', ''),
-        placeholder = 'e.g. Make Friday more elegant, reduce sightseeing, and add a stronger bar recommendation.',
-        max_chars = 320,
-        height = 120,
-    )
-
-    if st.button('Update current plan', use_container_width = True):
-        if not followup_text.strip():
-            st.warning('Please enter a follow-up request first.')
-            return
-
-        status_box = st.empty()
-        progress_bar = st.progress(0)
-
-        try:
-            status_box.info('Dion is revising the current plan...')
-            progress_bar.progress(42)
-
-            result = asyncio.run(
-                run_followup_planner_flow(
-                    original_request = user_request,
-                    current_plan = core_result,
-                    followup_message = followup_text,
-                )
-            )
-
-            status_box.info('Saving updated report...')
-            progress_bar.progress(86)
-
-            st.session_state['last_core_result'] = result['core_result']
-            st.session_state['last_ui_result'] = result['ui_result']
-            st.session_state['last_markdown_report'] = result['markdown_report']
-            st.session_state['last_error'] = None
-            st.session_state['followup_text'] = ''
-
-            progress_bar.progress(100)
-            status_box.success('Plan updated successfully.')
-            st.rerun()
-        except Exception as exc:
-            traceback.print_exc()
-            st.session_state['last_error'] = str(exc)
-            status_box.error('Updating the plan failed. Review the current setup.')
+    if st.button(_t('reset_button', user_request), use_container_width = True):
+        reset_planner_state()
+        st.rerun()
 
 
 def render_debug() -> None:
@@ -1224,7 +1575,8 @@ def render_debug() -> None:
 def main() -> None:
     init_session_state()
     render_hero()
-    scope_events, scope_sightseeing, scope_food = render_scope_controls()
+    has_existing_plan = st.session_state.get('last_core_result') is not None
+    scope_events, scope_sightseeing, scope_food = render_scope_controls(disabled = has_existing_plan)
 
     left_col, right_col = st.columns([1.34, 0.96], gap = 'large')
 
@@ -1233,6 +1585,7 @@ def main() -> None:
         if user_request is not None:
             render_status_and_run(user_request)
         render_followup_section()
+        render_reset_section()
 
     with right_col:
         render_results()

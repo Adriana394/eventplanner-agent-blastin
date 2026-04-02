@@ -10,6 +10,9 @@ import json
 from dotenv import load_dotenv
 import asyncio
 from datetime import datetime
+from zoneinfo import ZoneInfo
+
+import httpx
 
 import mcp
 from mcp import StdioServerParameters
@@ -18,12 +21,14 @@ from agents.mcp import MCPServerStdio
 from openai import AsyncOpenAI
 
 from agents import FunctionTool, Runner, Agent, OpenAIProvider, RunConfig, trace
+from agents.exceptions import ModelBehaviorError
 
 from IPython.display import display, Markdown
 
 from mcp_servers.mcp_servers import get_server_config, bundle_servers
-from src.schemas import (UserRequest, CoreResult, UIResult, MarkdownReport, ReporterResult,
+from src.schemas import (UserRequest, CoreResult, UIResult, MarkdownReport, ReporterResult, Money,
                          UIEventTeaser, UISpotItem, UIDayOverview, UIItineraryStop, UIFoodDrinkSpot)
+from src.reporting import render_markdown, save_report_markdown
 
 from src.instructions import SYSTEM_INSTRUCTIONS_PLANNER, SYSTEM_INSTRUCTIONS_REPORTER
 
@@ -33,9 +38,22 @@ load_dotenv(override = True)
 reports_dir = os.getenv('REPORTS_DIR', os.path.join(os.getcwd(), 'outputs', 'reports'))
 os.makedirs(reports_dir, exist_ok = True)
 
+CITY_SERVICE_BASE_URL = os.getenv('CITY_URL')
+EVENT_SERVICE_BASE_URL = os.getenv('EVENT_URL')
 OPENROUTER_BASE_URL = os.getenv('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1')
 MODEL_PROVIDER_OPENAI = 'openai'
 MODEL_PROVIDER_OPENROUTER = 'openrouter'
+BERLIN_TZ = ZoneInfo('Europe/Berlin')
+EVENT_PRICE_INFO_NOTE = (
+    'Eventim prices are synced once per day and may vary slightly later. '
+    'Use the ticket link for the latest live pricing.'
+)
+PLANNER_SCHEMA_RETRY_NOTE = """
+IMPORTANT OUTPUT FIX:
+- recommendation.sentences must contain at most 5 items
+- personal_feedback must stay concise
+- return valid CoreResult JSON only
+""".strip()
 
 
 def normalize_model_provider(provider_name: str | None) -> str:
@@ -92,6 +110,225 @@ def _build_model_provider(provider_name: str) -> OpenAIProvider:
 
     openai_api_key = os.getenv('OPENAI_API_KEY')
     return OpenAIProvider(api_key = openai_api_key, use_responses = True)
+
+
+def _normalize_report_path(saved_report_path: str, allowed_reports_dir: str) -> str:
+    if not saved_report_path:
+        raise ValueError('Reporter did not return a saved report path.')
+
+    normalized_reports_dir = os.path.abspath(allowed_reports_dir)
+    candidate_path = saved_report_path.strip()
+
+    if not os.path.isabs(candidate_path):
+        candidate_path = os.path.join(normalized_reports_dir, candidate_path)
+
+    normalized_candidate = os.path.abspath(candidate_path)
+
+    try:
+        common_prefix = os.path.commonpath([normalized_reports_dir, normalized_candidate])
+    except ValueError as exc:
+        raise ValueError('Reporter returned an invalid saved report path.') from exc
+
+    if common_prefix != normalized_reports_dir:
+        raise ValueError('Reporter did not return a valid saved report path inside the allowed directory.')
+
+    return normalized_candidate
+
+
+async def _persist_report_to_expected_path(
+    fs_server,
+    markdown_report: MarkdownReport,
+    reports_dir: str,
+    filename_hint: str,
+) -> str:
+    markdown_content = render_markdown(markdown_report)
+    saved_path = await save_report_markdown(
+        fs_server = fs_server,
+        reports_dir = reports_dir,
+        filename = filename_hint,
+        markdown = markdown_content,
+    )
+    return _normalize_report_path(saved_path, reports_dir)
+
+
+async def _run_planner_with_schema_retry(
+    planner_agent: Agent,
+    planner_input_text: str,
+    run_config: RunConfig,
+    max_turns: int | None = None,
+):
+    try:
+        if max_turns is None:
+            return await Runner.run(planner_agent, planner_input_text, run_config = run_config)
+        return await Runner.run(planner_agent, planner_input_text, max_turns = max_turns, run_config = run_config)
+    except ModelBehaviorError as exc:
+        error_text = str(exc)
+        if 'Recommendation must contain at most 5 sentences' not in error_text:
+            raise
+
+        retry_input = f"{planner_input_text}\n\n{PLANNER_SCHEMA_RETRY_NOTE}"
+        if max_turns is None:
+            return await Runner.run(planner_agent, retry_input, run_config = run_config)
+        return await Runner.run(planner_agent, retry_input, max_turns = max_turns, run_config = run_config)
+
+
+def _parse_backend_iso(dt_str: str | None) -> datetime | None:
+    if not dt_str:
+        return None
+
+    normalized = dt_str.strip()
+    if normalized.endswith('Z'):
+        normalized = normalized[:-1] + '+00:00'
+    return datetime.fromisoformat(normalized)
+
+
+def _to_utc_z(local_dt: datetime) -> str:
+    if local_dt.tzinfo is None:
+        local_dt = local_dt.replace(tzinfo = BERLIN_TZ)
+    return local_dt.astimezone(ZoneInfo('UTC')).isoformat(timespec = 'milliseconds').replace('+00:00', 'Z')
+
+
+def _to_berlin_iso(utc_dt_str: str | None) -> str | None:
+    parsed = _parse_backend_iso(utc_dt_str)
+    if parsed is None:
+        return None
+    return parsed.astimezone(BERLIN_TZ).isoformat(timespec = 'seconds')
+
+
+def _format_price_display(amount: float | int | None) -> str | None:
+    if amount is None:
+        return None
+
+    numeric_amount = float(amount)
+    if numeric_amount == 0:
+        return 'free'
+
+    return f'from {numeric_amount:.2f} EUR'
+
+
+async def _http_get_json(url: str, params: dict | None = None) -> dict:
+    async with httpx.AsyncClient(timeout = 30.0) as client:
+        response = await client.get(url, params = params)
+        response.raise_for_status()
+        return response.json()
+
+
+async def _resolve_city_key_from_backend(city_name_or_key: str) -> str | None:
+    if not CITY_SERVICE_BASE_URL:
+        return None
+
+    raw_city = (city_name_or_key or '').strip()
+    if not raw_city:
+        return None
+
+    if '--' in raw_city:
+        return raw_city
+
+    payload = await _http_get_json(f'{CITY_SERVICE_BASE_URL}/supported-cities-with-active-events')
+    city_rows = payload.get('payload', [])
+
+    lowered_raw_city = raw_city.casefold()
+    for row in city_rows:
+        city_name = (row.get('name') or '').strip()
+        city_key = (row.get('clearNameCityOverloardKey3000') or '').strip()
+        if city_name and city_name.casefold() == lowered_raw_city and city_key:
+            return city_key
+
+    return None
+
+
+async def _fetch_authoritative_events_for_trip(user_request: UserRequest) -> dict[str, dict]:
+    if not EVENT_SERVICE_BASE_URL:
+        return {}
+
+    city_key = await _resolve_city_key_from_backend(user_request.trip.city)
+    if not city_key:
+        return {}
+
+    range_start_local = datetime.combine(user_request.trip.date_start, datetime.min.time())
+    range_end_local = datetime.combine(user_request.trip.date_end, datetime.max.time().replace(microsecond = 0))
+
+    response = await _http_get_json(
+        f'{EVENT_SERVICE_BASE_URL}/events/for-city-key/{city_key}',
+        params = {
+            'eventsEndsAfterTimeUtc': _to_utc_z(range_start_local),
+            'eventsStartsBeforeTimeUtc': _to_utc_z(range_end_local),
+            'with_location': 'true',
+            'limit': 250,
+            'offset': 0,
+        },
+    )
+
+    event_rows = response.get('payload', {}).get('data', []) or []
+    authoritative_by_key: dict[str, dict] = {}
+
+    for row in event_rows:
+        event_id = (row.get('surrogate') or '').strip()
+        ticket_url = (row.get('ticketShopUrl') or '').strip()
+        name = (row.get('name') or '').strip()
+        start_ts = (row.get('startTimestamp') or '').strip()
+
+        if event_id:
+            authoritative_by_key[event_id] = row
+        if ticket_url:
+            authoritative_by_key[ticket_url] = row
+        if name and start_ts:
+            authoritative_by_key[f'{name}::{start_ts}'] = row
+
+    return authoritative_by_key
+
+
+def _sync_core_result_events_with_authoritative_data(core_result: CoreResult, authoritative_events: dict[str, dict]) -> CoreResult:
+    if not authoritative_events:
+        return core_result
+
+    for event in core_result.events:
+        lookup_keys = [event.event_id]
+        if event.ticket_url:
+            lookup_keys.append(event.ticket_url)
+        if event.start_datetime:
+            backend_start = _parse_backend_iso(event.start_datetime)
+            if backend_start is not None:
+                lookup_keys.append(f'{event.name}::{backend_start.astimezone(ZoneInfo("UTC")).isoformat().replace("+00:00", "Z")}')
+
+        authoritative = next((authoritative_events.get(key) for key in lookup_keys if key), None)
+        if not authoritative:
+            continue
+
+        location = authoritative.get('location') or {}
+        lowest_price = authoritative.get('lowestPrice')
+        address = (location.get('address') or '').strip()
+        venue_name = (location.get('name') or '').strip()
+        city_name = (location.get('cityName') or '').strip()
+
+        event.name = authoritative.get('name') or event.name
+        event.start_datetime = _to_berlin_iso(authoritative.get('startTimestamp')) or event.start_datetime
+        event.end_datetime = _to_berlin_iso(authoritative.get('endTimestamp')) or event.end_datetime
+        event.ticket_url = authoritative.get('ticketShopUrl') or event.ticket_url
+        event.source_url = authoritative.get('ticketShopUrl') or event.source_url
+        event.description = authoritative.get('description') or event.description
+        event.event_id = authoritative.get('surrogate') or event.event_id
+
+        if address and city_name:
+            event.address_or_area = f'{address}, {city_name.title()}'
+        elif address:
+            event.address_or_area = address
+        elif venue_name:
+            event.address_or_area = venue_name
+
+        if event.price is None:
+            event.price = Money()
+
+        event.price.amount_eur = lowest_price
+        event.price.display = _format_price_display(lowest_price)
+
+    return core_result
+
+
+def _attach_event_price_info_warning(core_result: CoreResult) -> CoreResult:
+    if core_result.events and EVENT_PRICE_INFO_NOTE not in core_result.warnings:
+        core_result.warnings.append(EVENT_PRICE_INFO_NOTE)
+    return core_result
 
 
 # Build input text for Agents
@@ -270,9 +507,16 @@ async def run_full_planner_flow(
         )
         
         with trace('dion_planner'):
-            planner_run = await Runner.run(dion_planner, planner_input_text, run_config = run_config)
+            planner_run = await _run_planner_with_schema_retry(
+                dion_planner,
+                planner_input_text,
+                run_config = run_config,
+            )
             
         core_result = planner_run.final_output
+        authoritative_events = await _fetch_authoritative_events_for_trip(user_request)
+        core_result = _sync_core_result_events_with_authoritative_data(core_result, authoritative_events)
+        core_result = _attach_event_price_info_warning(core_result)
         ui_result = core_to_ui(core_result = core_result)
         
         reporter_job = {
@@ -291,10 +535,12 @@ async def run_full_planner_flow(
             
         reporter_result = reporter_run.final_output
         markdown_report = reporter_result.markdown_report
-        saved_report_path = reporter_result.saved_report_path
-        
-        if not saved_report_path or not saved_report_path.startswith(reports_dir):
-            raise ValueError('Reporter did not return a valid saved report path inside the allowed directory.')
+        saved_report_path = await _persist_report_to_expected_path(
+            fs_server = fs,
+            markdown_report = markdown_report,
+            reports_dir = reports_dir,
+            filename_hint = reporter_job['filename_hint'],
+        )
         
         
         return {
@@ -355,9 +601,17 @@ async def run_followup_planner_flow(
         )
         
         with trace('dion_planner_followup'):
-            planner_run = await Runner.run(dion_planner, planner_input_text, max_turns = 20, run_config = run_config)
+            planner_run = await _run_planner_with_schema_retry(
+                dion_planner,
+                planner_input_text,
+                max_turns = 20,
+                run_config = run_config,
+            )
 
         core_result = planner_run.final_output
+        authoritative_events = await _fetch_authoritative_events_for_trip(original_request)
+        core_result = _sync_core_result_events_with_authoritative_data(core_result, authoritative_events)
+        core_result = _attach_event_price_info_warning(core_result)
         ui_result = core_to_ui(core_result = core_result)
 
         reporter_job = {
@@ -376,10 +630,12 @@ async def run_followup_planner_flow(
 
         reporter_result = reporter_run.final_output
         markdown_report = reporter_result.markdown_report
-        saved_report_path = reporter_result.saved_report_path
-
-        if not saved_report_path or not saved_report_path.startswith(reports_dir):
-            raise ValueError('Reporter did not return a valid saved report path inside the allowed directory.')
+        saved_report_path = await _persist_report_to_expected_path(
+            fs_server = fs,
+            markdown_report = markdown_report,
+            reports_dir = reports_dir,
+            filename_hint = reporter_job['filename_hint'],
+        )
 
         return {
             'core_result': core_result,
