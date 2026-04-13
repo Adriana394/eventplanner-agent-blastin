@@ -713,6 +713,7 @@ def build_user_request(
     country: str,
     date_start: date,
     date_end: date,
+    include_last_day: bool,
     planning_mode: str,
     events_enabled: bool,
     sightseeing_enabled: bool,
@@ -740,6 +741,7 @@ def build_user_request(
             'country': country.strip() or None,
             'date_start': str(date_start),
             'date_end': str(date_end),
+            'include_last_day': include_last_day,
             'planning_mode': planning_mode,
             'events_enabled': events_enabled,
             'sightseeing_enabled': sightseeing_enabled,
@@ -919,6 +921,7 @@ def render_form(
     country_value = existing_request.trip.country if existing_request and existing_request.trip.country else ''
     date_start_value = existing_request.trip.date_start if existing_request else date.today() + timedelta(days = 7)
     date_end_value = existing_request.trip.date_end if existing_request else date.today() + timedelta(days = 9)
+    include_last_day_value = existing_request.trip.include_last_day if existing_request else True
     group_size_value = existing_request.trip.group_size if existing_request and existing_request.trip.group_size else GROUP_SIZE_OPTIONS[0]
     planning_mode_value = (
         existing_request.trip.planning_mode.value
@@ -998,6 +1001,11 @@ def render_form(
                     value = date_end_value,
                     min_value = date.today(),
                 )
+            include_last_day = st.checkbox(
+                'Include last trip day in itinerary',
+                value = include_last_day_value,
+                help = 'Keep the final day visible in the itinerary even if it is mainly an arrival or departure day.',
+            )
 
             col_setup_1, col_setup_2 = st.columns(2)
             with col_setup_1:
@@ -1145,6 +1153,7 @@ def render_form(
             country = country,
             date_start = date_start,
             date_end = date_end,
+            include_last_day = include_last_day,
             planning_mode = planning_mode,
             events_enabled = events_enabled,
             sightseeing_enabled = sightseeing_enabled,
@@ -1201,6 +1210,7 @@ def render_form(
             country = country,
             date_start = date_start,
             date_end = date_end,
+            include_last_day = include_last_day,
             planning_mode = planning_mode,
             events_enabled = events_enabled,
             sightseeing_enabled = sightseeing_enabled,

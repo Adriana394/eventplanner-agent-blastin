@@ -60,6 +60,7 @@ class TripRequest(BaseModel):
     country: Optional[str] = Field(default = None, description= ' Optional country name.')
     date_start: date = Field(description= ' Start date of the trip.')
     date_end: date = Field(description= 'End date of the trip.')
+    include_last_day: bool = Field(default = True, description = 'If true, the final trip day should remain visible in the itinerary.')
     
     planning_mode: PlanningMode = Field(default = PlanningMode.full_trip, description= 'Defines whether the user wants a full trip or only an event/day trip.')
     events_enabled: bool = Field(default = True, description= 'If false, no events should be planned.')
@@ -169,7 +170,7 @@ class FoodDrinkSpot(BaseModel):
     price_hint: Optional[str] = Field(default = None, description= 'Short price hint if known, e.g. cocktails 14-18 EUR')
     opening_hours: Optional[str] = Field(default = None, description= 'Opening hours if known')
     why_match: str = Field(description= '1-2 sentences why this venue matches the user request.')
-    source_url: str = Field(description= 'Primary source URL for this venue.')
+    source_url: Optional[str] = Field(default = None, description= 'Primary source URL for this venue when verified and reachable.')
 
 
 class ItineraryStop(BaseModel):
@@ -250,6 +251,17 @@ class ReporterResult(BaseModel):
     saved_report_path: str = Field(description = 'Absolute path where the markdown report was saved.')
 
 
+class ValidationIssue(BaseModel):
+    code: str = Field(description = 'Stable issue code, e.g. recommendation_free_mismatch.')
+    message: str = Field(description = 'Concrete explanation of the inconsistency or violation.')
+    severity: Literal['info', 'warning', 'error'] = Field(default = 'warning', description = 'Issue severity.')
+
+
+class ValidationResult(BaseModel):
+    needs_revision: bool = Field(description = 'Whether the planner should revise the current result.')
+    issues: List[ValidationIssue] = Field(default_factory = list, description = 'Concrete validation findings.')
+
+
 class UIEventTeaser(BaseModel):
     name: str
     start_datetime: Optional[str] = None
@@ -284,7 +296,7 @@ class UIFoodDrinkSpot(BaseModel):
     venue_type: str
     price_hint: Optional[str] = None
     opening_hours: Optional[str] = None
-    source_url: str
+    source_url: Optional[str] = None
 
 
 class UIResult(BaseModel):
