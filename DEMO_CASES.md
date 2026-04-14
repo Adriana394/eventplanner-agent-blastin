@@ -8,6 +8,7 @@ Use these cases before internal reviews, live demos, or major model/config chang
 For each case:
 
 - run the planner with the exact inputs
+- test both Streamlit and Gradio when UI comparison is relevant
 - review UI output, structured result, and markdown report
 - mark the case as `ready`, `needs review`, or `blocked`
 - note concrete issues instead of vague impressions
@@ -16,6 +17,10 @@ For each case:
 
 - Goal: show balanced planning with events, food/drinks, and lighter sightseeing
 - Status: `needs review`
+- Latest finding:
+  - a previous run produced overlapping same-evening events in the itinerary
+  - the middle day started too late despite daytime scope being enabled
+  - event/source link quality still needs verification after the latest backend guardrail changes
 - Inputs:
   - City: `Hannover`
   - Country: `Germany`
@@ -45,6 +50,9 @@ For each case:
   - recommendation does not overclaim free or outdoor activities
   - food/drink venues feel aligned with the evening tone
   - no generic placeholder itinerary stops remain
+  - no overlapping event stops appear in the itinerary
+  - the middle trip day contains a meaningful daytime structure
+  - event and place links shown in the UI are public and usable
 
 ## Case 2: Berlin Nightlife Focus
 

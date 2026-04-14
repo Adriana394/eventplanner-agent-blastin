@@ -10,7 +10,12 @@ This file replaces the older `NEXT_STEPS.md` and captures the current state of t
 2. `Dion_Validator` checks the result for consistency and sends repair findings back when needed
 3. `Dion_Reporter` turns the validated result into a markdown report and saves it
 
-The current UI remains Streamlit-based in [src/dion_ui.py](/home/adri/projects/eventplanner-agent/src/dion_ui.py:1), while orchestration and business logic live in [src/event_client.py](/home/adri/projects/eventplanner-agent/src/event_client.py:1).
+The project now has two UI variants for comparison:
+
+- Streamlit in [src/dion_ui.py](/home/adri/projects/eventplanner-agent/src/dion_ui.py:1)
+- Gradio in [src/dion_gradio_ui.py](/home/adri/projects/eventplanner-agent/src/dion_gradio_ui.py:1)
+
+The orchestration and business logic still live in [src/event_client.py](/home/adri/projects/eventplanner-agent/src/event_client.py:1).
 
 ## What Is Implemented
 
@@ -18,6 +23,12 @@ The current UI remains Streamlit-based in [src/dion_ui.py](/home/adri/projects/e
 - Provider switching happens via `.env`, not the UI
 - Separate planner, reporter, and validator model selection is supported
 - Default OpenRouter validator model is `openai/gpt-oss-120b:free`
+- A second Gradio UI was added without removing the Streamlit UI
+- The Gradio UI now includes:
+  - the same overall BLASTIn-style visual direction
+  - follow-up and reset flows
+  - calendar-based date inputs
+  - more spacious form layout for side-by-side UI comparison
 - The trip form now supports `include_last_day`
 - Generic itinerary placeholders are filtered before UI/report output
 - Food/drink venues are no longer dropped only because their URL cannot be confirmed
@@ -27,7 +38,10 @@ The current UI remains Streamlit-based in [src/dion_ui.py](/home/adri/projects/e
   - `must_avoid`
   - itinerary references
   - itinerary date range and day handling
+  - overlapping event stops in one itinerary day
+  - weak middle-day planning that starts only late in the day
   - recommendation-vs-result mismatches
+- Event links are now normalized to public-facing URLs when possible
 - The markdown report is more presentation-oriented with trip framing, fit explanations, day flow, and tradeoff notes
 
 ## Current Quality Direction
@@ -46,6 +60,8 @@ The system is now much stronger on correctness and internal consistency than ear
 - run the planned demo cases in [DEMO_CASES.md](/home/adri/projects/eventplanner-agent/DEMO_CASES.md:1)
 - identify which scenarios are stable enough for a live presentation
 - record concrete failures instead of generic impressions
+- compare Streamlit vs. Gradio on the same demo cases before choosing a presentation UI
+- verify that the new itinerary/link guardrails actually suppress the Case 1 overlap issues
 
 ### Product Polish
 

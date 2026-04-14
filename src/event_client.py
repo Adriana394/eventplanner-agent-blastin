@@ -49,6 +49,7 @@ EVENT_PRICE_INFO_NOTE = (
     'Eventim prices are synced once per day and may vary slightly later. '
     'Use the ticket link for the latest live pricing.'
 )
+EVENTIM_HOSTS = {'eventim.de', 'www.eventim.de'}
 PLANNER_SCHEMA_RETRY_NOTE = """
 IMPORTANT OUTPUT FIX:
 - recommendation.sentences must contain at most 5 items
@@ -248,6 +249,27 @@ def _format_price_display(amount: float | int | None) -> str | None:
     return f'from {numeric_amount:.2f} EUR'
 
 
+def _normalize_public_url(url: str | None) -> str | None:
+    normalized = (url or '').strip()
+    if not normalized:
+        return None
+
+    if not re.match(r'^https?://', normalized, flags = re.IGNORECASE):
+        return None
+
+    if any(char.isspace() for char in normalized):
+        return None
+
+    normalized = normalized.replace('://eventim.de/', '://www.eventim.de/')
+    normalized = re.sub(
+        r'^(https?://www\.eventim\.de)/noapp/event/',
+        r'\1/event/',
+        normalized,
+        flags = re.IGNORECASE,
+    )
+    return normalized
+
+
 async def _http_get_json(url: str, params: dict | None = None) -> dict:
     async with httpx.AsyncClient(timeout = 30.0) as client:
         response = await client.get(url, params = params)
@@ -346,8 +368,8 @@ def _sync_core_result_events_with_authoritative_data(core_result: CoreResult, au
         event.name = authoritative.get('name') or event.name
         event.start_datetime = _to_berlin_iso(authoritative.get('startTimestamp')) or event.start_datetime
         event.end_datetime = _to_berlin_iso(authoritative.get('endTimestamp')) or event.end_datetime
-        event.ticket_url = authoritative.get('ticketShopUrl') or event.ticket_url
-        event.source_url = authoritative.get('ticketShopUrl') or event.source_url
+        event.ticket_url = _normalize_public_url(authoritative.get('ticketShopUrl') or event.ticket_url)
+        event.source_url = _normalize_public_url(authoritative.get('ticketShopUrl') or event.source_url) or event.source_url
         event.description = authoritative.get('description') or event.description
         event.event_id = authoritative.get('surrogate') or event.event_id
 
@@ -420,7 +442,7 @@ def _sanitize_food_and_drink_source_urls(core_result: CoreResult) -> CoreResult:
     missing_source_names: list[str] = []
 
     for place in core_result.food_and_drink_spots:
-        normalized_url = (place.source_url or '').strip()
+        normalized_url = _normalize_public_url(place.source_url)
         if normalized_url:
             place.source_url = normalized_url
             continue
@@ -434,6 +456,56 @@ def _sanitize_food_and_drink_source_urls(core_result: CoreResult) -> CoreResult:
         suffix = f' (+{extra_count} more)' if extra_count > 0 else ''
         core_result.warnings.append(
             f'Verified food/drink venues kept without source URL because the venue page could not be confirmed: {preview_names}{suffix}.'
+        )
+
+    return core_result
+
+
+def _sanitize_event_source_urls(core_result: CoreResult) -> CoreResult:
+    normalized_event_names: list[str] = []
+
+    for event in core_result.events:
+        original_source_url = event.source_url
+        original_ticket_url = event.ticket_url
+
+        event.source_url = _normalize_public_url(event.source_url) or event.source_url
+        event.ticket_url = _normalize_public_url(event.ticket_url) or event.ticket_url
+
+        if event.ticket_url and not event.source_url:
+            event.source_url = event.ticket_url
+        if event.source_url and not event.ticket_url:
+            event.ticket_url = event.source_url
+
+        if event.source_url != original_source_url or event.ticket_url != original_ticket_url:
+            normalized_event_names.append(event.name)
+
+    if normalized_event_names:
+        preview_names = ', '.join(normalized_event_names[:3])
+        extra_count = len(normalized_event_names) - min(len(normalized_event_names), 3)
+        suffix = f' (+{extra_count} more)' if extra_count > 0 else ''
+        core_result.warnings.append(
+            f'Normalized public event links for: {preview_names}{suffix}.'
+        )
+
+    return core_result
+
+
+def _sanitize_sightseeing_source_urls(core_result: CoreResult) -> CoreResult:
+    invalid_source_names: list[str] = []
+
+    for spot in core_result.sightseeing_spots:
+        normalized_url = _normalize_public_url(spot.source_url)
+        if normalized_url:
+            spot.source_url = normalized_url
+            continue
+        invalid_source_names.append(spot.name)
+
+    if invalid_source_names:
+        preview_names = ', '.join(invalid_source_names[:3])
+        extra_count = len(invalid_source_names) - min(len(invalid_source_names), 3)
+        suffix = f' (+{extra_count} more)' if extra_count > 0 else ''
+        core_result.warnings.append(
+            f'Some sightseeing source URLs look invalid or malformed and should be rechecked: {preview_names}{suffix}.'
         )
 
     return core_result
@@ -466,6 +538,23 @@ def _extract_time_sort_key(value: str | None) -> tuple[int, int] | None:
     if hour > 23 or minute > 59:
         return None
     return hour, minute
+
+
+def _build_event_lookup(core_result: CoreResult) -> dict[str, object]:
+    lookup: dict[str, object] = {}
+    for event in core_result.events:
+        key = _normalize_name_key(event.name)
+        if key:
+            lookup[key] = event
+    return lookup
+
+
+def _parse_local_event_window(event) -> tuple[datetime | None, datetime | None]:
+    start = _parse_backend_iso(event.start_datetime)
+    end = _parse_backend_iso(event.end_datetime)
+    if start is not None and end is not None and end < start:
+        end = start
+    return start, end
 
 
 def _event_dates_by_name(core_result: CoreResult) -> dict[str, set[str]]:
@@ -505,6 +594,7 @@ def _collect_deterministic_validation_issues(user_request: UserRequest, core_res
     issues: list[ValidationIssue] = []
     event_names, sightseeing_names, food_names = _build_item_name_sets(core_result)
     event_dates_by_name = _event_dates_by_name(core_result)
+    event_lookup = _build_event_lookup(core_result)
     must_avoid_terms = [
         _normalize_name_key(term)
         for term in (user_request.itinerary.must_avoid or [])
@@ -657,9 +747,13 @@ def _collect_deterministic_validation_issues(user_request: UserRequest, core_res
                 )
             )
 
-    itinerary_labels = {_normalize_generic_text(day.day_label) for day in core_result.itinerary}
     expected_last_day = _normalize_generic_text(user_request.trip.date_end.isoformat())
-    if user_request.trip.include_last_day and expected_last_day not in itinerary_labels:
+    itinerary_dates_set = {
+        _normalize_generic_text(_extract_iso_date(day.day_label))
+        for day in core_result.itinerary
+        if _extract_iso_date(day.day_label)
+    }
+    if user_request.trip.include_last_day and expected_last_day not in itinerary_dates_set:
         issues.append(
             ValidationIssue(
                 code = 'last_day_missing',
@@ -667,7 +761,7 @@ def _collect_deterministic_validation_issues(user_request: UserRequest, core_res
                 severity = 'error',
             )
         )
-    if not user_request.trip.include_last_day and expected_last_day in itinerary_labels:
+    if not user_request.trip.include_last_day and expected_last_day in itinerary_dates_set:
         issues.append(
             ValidationIssue(
                 code = 'last_day_unexpected',
@@ -698,6 +792,8 @@ def _collect_deterministic_validation_issues(user_request: UserRequest, core_res
             continue
 
         previous_time_key: tuple[int, int] | None = None
+        earliest_time_key: tuple[int, int] | None = None
+        day_event_windows: list[tuple[str, datetime | None, datetime | None]] = []
         for stop in day.stops:
             linked_name_key = _normalize_name_key(stop.linked_item_name or stop.title)
 
@@ -740,6 +836,8 @@ def _collect_deterministic_validation_issues(user_request: UserRequest, core_res
                 previous_time_key = stop_time_key
             elif stop_time_key:
                 previous_time_key = stop_time_key
+                if earliest_time_key is None or stop_time_key < earliest_time_key:
+                    earliest_time_key = stop_time_key
 
             if stop.stop_type == 'event' and linked_name_key and day_date:
                 event_dates = event_dates_by_name.get(linked_name_key)
@@ -751,6 +849,51 @@ def _collect_deterministic_validation_issues(user_request: UserRequest, core_res
                             severity = 'error',
                         )
                     )
+
+                linked_event = event_lookup.get(linked_name_key)
+                if linked_event:
+                    event_start, event_end = _parse_local_event_window(linked_event)
+                    day_event_windows.append((stop.title, event_start, event_end))
+
+        for idx, (left_title, left_start, left_end) in enumerate(day_event_windows):
+            if left_start is None:
+                continue
+            left_end_effective = left_end or left_start
+            for right_title, right_start, right_end in day_event_windows[idx + 1:]:
+                if right_start is None:
+                    continue
+                right_end_effective = right_end or right_start
+                if left_start < right_end_effective and right_start < left_end_effective:
+                    issues.append(
+                        ValidationIssue(
+                            code = 'overlapping_event_stops',
+                            message = (
+                                f"The itinerary day '{day.day_label}' contains overlapping event stops "
+                                f"('{left_title}' and '{right_title}'). Competing events must not appear as one linear plan."
+                            ),
+                            severity = 'error',
+                        )
+                    )
+
+        if (
+            user_request.trip.planning_mode.value == 'full_trip'
+            and day_date
+            and day_date > user_request.trip.date_start.isoformat()
+            and day_date < user_request.trip.date_end.isoformat()
+            and (user_request.trip.sightseeing_enabled or user_request.trip.food_drink_enabled)
+            and earliest_time_key is not None
+            and earliest_time_key >= (15, 0)
+        ):
+            issues.append(
+                ValidationIssue(
+                    code = 'daytime_plan_missing',
+                    message = (
+                        f"The itinerary day '{day.day_label}' starts too late for a full-trip day. "
+                        'Middle trip days should include a meaningful daytime plan before the evening.'
+                    ),
+                    severity = 'error',
+                )
+            )
 
     itinerary_dates = [
         _extract_iso_date(day.day_label)
@@ -797,6 +940,26 @@ def _collect_deterministic_validation_issues(user_request: UserRequest, core_res
                 )
             )
 
+    invalid_external_links: list[str] = []
+    for spot in core_result.sightseeing_spots:
+        if not _normalize_public_url(spot.source_url):
+            invalid_external_links.append(spot.name)
+    for place in core_result.food_and_drink_spots:
+        if place.source_url and not _normalize_public_url(place.source_url):
+            invalid_external_links.append(place.name)
+
+    if invalid_external_links:
+        issues.append(
+            ValidationIssue(
+                code = 'invalid_external_links',
+                message = (
+                    'Some sightseeing or food/drink source URLs look malformed or unreliable: '
+                    f"{', '.join(invalid_external_links[:4])}."
+                ),
+                severity = 'warning',
+            )
+        )
+
     return _dedupe_validation_issues(issues)
 
 
@@ -842,6 +1005,9 @@ async def _repair_core_result_if_needed(
         run_config = run_config,
     )
     repaired_core_result = _sanitize_itinerary_placeholders(repair_run.final_output)
+    repaired_core_result = _sanitize_event_source_urls(repaired_core_result)
+    repaired_core_result = _sanitize_sightseeing_source_urls(repaired_core_result)
+    repaired_core_result = _sanitize_food_and_drink_source_urls(repaired_core_result)
     final_validation_result = await _run_validator(
         validator_agent = validator_agent,
         user_request = user_request,
@@ -1091,6 +1257,8 @@ async def run_full_planner_flow(
         authoritative_events = await _fetch_authoritative_events_for_trip(user_request)
         core_result = _sync_core_result_events_with_authoritative_data(core_result, authoritative_events)
         core_result = _sanitize_itinerary_placeholders(core_result)
+        core_result = _sanitize_event_source_urls(core_result)
+        core_result = _sanitize_sightseeing_source_urls(core_result)
         core_result = _sanitize_food_and_drink_source_urls(core_result)
         core_result, _ = await _repair_core_result_if_needed(
             planner_agent = dion_planner,
@@ -1100,6 +1268,8 @@ async def run_full_planner_flow(
             run_config = run_config,
         )
         core_result = _sync_core_result_events_with_authoritative_data(core_result, authoritative_events)
+        core_result = _sanitize_event_source_urls(core_result)
+        core_result = _sanitize_sightseeing_source_urls(core_result)
         core_result = _sanitize_food_and_drink_source_urls(core_result)
         core_result = _attach_event_price_info_warning(core_result)
         ui_result = core_to_ui(core_result = core_result)
@@ -1207,6 +1377,8 @@ async def run_followup_planner_flow(
         authoritative_events = await _fetch_authoritative_events_for_trip(original_request)
         core_result = _sync_core_result_events_with_authoritative_data(core_result, authoritative_events)
         core_result = _sanitize_itinerary_placeholders(core_result)
+        core_result = _sanitize_event_source_urls(core_result)
+        core_result = _sanitize_sightseeing_source_urls(core_result)
         core_result = _sanitize_food_and_drink_source_urls(core_result)
         core_result, _ = await _repair_core_result_if_needed(
             planner_agent = dion_planner,
@@ -1216,6 +1388,8 @@ async def run_followup_planner_flow(
             run_config = run_config,
         )
         core_result = _sync_core_result_events_with_authoritative_data(core_result, authoritative_events)
+        core_result = _sanitize_event_source_urls(core_result)
+        core_result = _sanitize_sightseeing_source_urls(core_result)
         core_result = _sanitize_food_and_drink_source_urls(core_result)
         core_result = _attach_event_price_info_warning(core_result)
         ui_result = core_to_ui(core_result = core_result)

@@ -115,8 +115,13 @@ Planning & quality rules:
   - Set a suitable stop_type for each itinerary stop (for example: sightseeing, event, food, or other).
   - Ensure the itinerary is feasible (allow reasonable travel time and do not overlap items.)
   - Keep itinerary times consistent and user-friendly.
+  - Do not place competing events that overlap in time into one linear itinerary day.
+  - If there are multiple appealing events on the same evening, select one as the actual itinerary event and leave the others out of the itinerary.
+  - Do not present alternatives as if the user can attend all of them.
   - Deduplicate items using (name + start_datetime + location) where applicable.
   - If sightseeing is included, place it in realistic daytime slots and avoid overloading the same day.
+  - In full_trip mode, middle trip days should not begin only in the evening when sightseeing or food/drink planning is enabled.
+  - Give intermediate full-trip days a meaningful daytime structure before evening events unless the request explicitly says otherwise.
   - Every sightseeing stop in the itinerary must correspond to a concrete verified item in sightseeing_spots.
   - Every food stop in the itinerary must correspond to a concrete verified item in food_and_drink_spots.
   - Do not include generic placeholders such as 'Dinner in a fine restaurant', 'Visit historic places', or 'Enjoy drinks at a bar'.
@@ -210,6 +215,9 @@ What to check:
 Rules:
 - Only report an issue when it is grounded in the provided request or CoreResult.
 - Keep findings concrete and actionable.
+- Treat overlapping itinerary stops and competing same-evening event stops as high-severity problems.
+- Treat middle full-trip days that only start in the late afternoon or evening as problematic when daytime planning is enabled.
+- Flag malformed or unreliable non-Eventim place links when they appear in the plan.
 - Prefer fewer high-signal issues over many weak guesses.
 - If the plan is consistent enough, return needs_revision = false and an empty issues list.
 

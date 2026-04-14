@@ -77,6 +77,14 @@ uv run streamlit run src/dion_ui.py
 
 The app is typically available at `http://localhost:8501`.
 
+For the additional Gradio variant:
+
+```bash
+uv run python src/dion_gradio_ui.py
+```
+
+This launches a second UI implementation for side-by-side comparison without removing or replacing the Streamlit app.
+
 ## Current Focus
 
 The current focus is demo readiness, not a frontend rewrite. The system has recently been improved around:
