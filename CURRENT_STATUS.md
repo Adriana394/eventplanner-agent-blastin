@@ -30,8 +30,13 @@ The orchestration and business logic still live in [src/event_client.py](/home/a
   - calendar-based date inputs
   - more spacious form layout for side-by-side UI comparison
 - The trip form now supports `include_last_day`
+- The Streamlit date selection now uses a date-range picker for start/end selection
+- The Streamlit flow now rerenders into follow-up mode immediately after a successful first run
+- Follow-up UX now explains that current form filters remain active unless the user changes them
 - Generic itinerary placeholders are filtered before UI/report output
-- Food/drink venues are no longer dropped only because their URL cannot be confirmed
+- Sightseeing and food/drink places are no longer dropped only because their public URL cannot be confirmed
+- UI cards and itinerary stops now show a short note instead of a broken link button when no verified public link is available
+- Markdown reports now include a short link-availability note when places remain in the plan without a verified public link
 - A validator-driven repair loop now checks:
   - disabled scopes
   - `free_only` constraints
@@ -42,6 +47,8 @@ The orchestration and business logic still live in [src/event_client.py](/home/a
   - weak middle-day planning that starts only late in the day
   - recommendation-vs-result mismatches
 - Event links are now normalized to public-facing URLs when possible
+- Itinerary stop URLs are now resynced against the final verified event/place URLs
+- Internal warning output is now deduplicated and no longer treats intentionally cleared `source_url = null` values as malformed by default
 - The markdown report is more presentation-oriented with trip framing, fit explanations, day flow, and tradeoff notes
 
 ## Current Quality Direction
@@ -61,13 +68,14 @@ The system is now much stronger on correctness and internal consistency than ear
 - identify which scenarios are stable enough for a live presentation
 - record concrete failures instead of generic impressions
 - compare Streamlit vs. Gradio on the same demo cases before choosing a presentation UI
-- verify that the new itinerary/link guardrails actually suppress the Case 1 overlap issues
+- verify that the remaining itinerary stop type edge case does not recur in additional demos
 
 ### Product Polish
 
 - verify that the Streamlit UI feels presentation-ready under realistic runs
 - test the follow-up flow more aggressively
 - confirm that the improved report quality holds across multiple cities and request styles
+- keep [issues.md](/home/adri/projects/eventplanner-agent/issues.md:1) limited to truly unresolved findings
 
 ### Future Product Work
 

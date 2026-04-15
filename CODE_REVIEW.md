@@ -56,7 +56,9 @@ The main runtime path lives in `src/event_client.py`.
 6. Python applies post-processing:
    - authoritative Eventim enrichment
    - generic itinerary placeholder cleanup
-   - food/drink URL normalization
+   - event/place URL normalization
+   - place-link verification with keep-the-place/remove-the-link behavior
+   - itinerary stop link resync against the final verified item URLs
 7. Deterministic validation runs for scope, constraints, itinerary references, date logic, and selected recommendation mismatches.
 8. `Dion_Validator` adds semantic validation findings.
 9. If issues exist, `Dion_Planner` receives a repair prompt containing the validation findings and returns a revised `CoreResult`.
@@ -85,7 +87,9 @@ It defines:
 Notable current points:
 
 - `TripRequest` includes `include_last_day`
+- `SightseeingSpot.source_url` is now optional
 - `FoodDrinkSpot.source_url` is now optional
+- `UISpotItem.source_url` is now optional
 - result sizes are guarded through validators
 
 Why it matters:
@@ -105,7 +109,8 @@ Current responsibilities:
 - planner execution
 - authoritative event syncing from backend services
 - itinerary placeholder cleanup
-- food/drink source URL normalization
+- event/place source URL normalization and verification
+- itinerary stop source URL resync after final verification
 - deterministic validation
 - validator-agent execution
 - planner repair loop
@@ -134,7 +139,7 @@ Why it matters:
 Recent important changes:
 
 - explicit `include_last_day` handling
-- food/drink venue rule: keep the venue if verified, even when the URL cannot be confirmed
+- non-Eventim sightseeing and food/drink links are validated, but places are kept even when their public link cannot be confirmed
 - stronger report-quality rules
 - validation-only instructions for the third agent
 
@@ -148,6 +153,7 @@ Current responsibilities:
 - events, sightseeing, and food/drink sections with fit explanations
 - budget/tradeoff section when supported by available data
 - more readable day-by-day narrative framing
+- explicit markdown note when places remain in the plan without a verified public link
 - markdown rendering and report persistence helpers
 
 Architectural note:
@@ -168,7 +174,10 @@ Main responsibilities:
 
 Important current UI detail:
 
-- the form now includes `Include last trip day in itinerary`
+- the form now includes `Include final trip day`
+- travel dates are selected through a single date-range picker
+- after a successful run, the same form rerenders into follow-up mode instead of requiring a reset
+- items without verified place links show a small explanatory note instead of a broken link button
 
 ## Important Files In `mcp_servers/`
 
@@ -214,6 +223,7 @@ It is the main structured place source behind sightseeing and food/drink plannin
 - explicit support for iterative follow-up changes
 - better reliability through deterministic checks plus validator-agent review
 - improved transparency through warnings instead of silent data loss
+- clearer handling of missing public place links across UI, itinerary, and markdown report
 
 ## Current Risks Or Watch Areas
 
@@ -221,6 +231,7 @@ It is the main structured place source behind sightseeing and food/drink plannin
 - demo readiness now depends on testing stable request scenarios, not only code quality
 - the Streamlit UI is serviceable for demos, but not a deployable product frontend
 - report quality is improved, but should still be checked on real cases before presentation
+- one open issue remains: an itinerary stop can still receive the wrong `stop_type` from planner/repair output in edge cases
 
 ## Recommended Reading Order
 

@@ -159,7 +159,7 @@ class SightseeingSpot(BaseModel):
     entry_fee: Optional[Money] = Field(default = None, description= 'Entry fee if known')
     opening_hours: Optional[str] = Field(default = None, description= 'Opening hours if known')
     why_visit: str = Field(description= '1-2 sentences reason why it matches user request.')
-    source_url: str = Field(description= ' Primary URL for this spot (required for prototype)')
+    source_url: Optional[str] = Field(default = None, description= 'Primary source URL for this spot when verified and reachable.')
     
     
 class FoodDrinkSpot(BaseModel):
@@ -275,7 +275,7 @@ class UISpotItem(BaseModel):
     name: str
     entry_fee_display: Optional[str] = None
     opening_hours: Optional[str] = None
-    source_url: str
+    source_url: Optional[str] = None
 
 class UIItineraryStop(BaseModel):
     title: str

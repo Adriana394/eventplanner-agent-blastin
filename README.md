@@ -31,6 +31,9 @@ The planner can combine:
 - DZT-backed place discovery
 - validator-driven repair loop instead of silent post-processing only
 - final-day itinerary control through `include_last_day`
+- browser-validated place-link handling that keeps places even when public links cannot be confirmed
+- itinerary/source-url resync so final verified link state also propagates into itinerary stops
+- follow-up revisions from the same planning form, with current filters kept as active constraints
 - markdown report generation with trip framing, rationale, and tradeoff notes
 
 ## Main Files
@@ -92,8 +95,12 @@ The current focus is demo readiness, not a frontend rewrite. The system has rece
 - itinerary correctness
 - removal of generic filler stops
 - recommendation/data consistency
-- food/drink source handling
+- sightseeing and food/drink source handling
+- follow-up usability in Streamlit
+- markdown report messaging for places without verified public links
 - validator-driven repair
 - stronger report quality
+
+The currently tracked open issue list lives in [issues.md](/home/adri/projects/eventplanner-agent/issues.md:1).
 
 Use [CURRENT_STATUS.md](/home/adri/projects/eventplanner-agent/CURRENT_STATUS.md:1) for the latest status and [DEMO_CASES.md](/home/adri/projects/eventplanner-agent/DEMO_CASES.md:1) for the planned presentation scenarios.

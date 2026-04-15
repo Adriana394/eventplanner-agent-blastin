@@ -519,12 +519,14 @@ UI_TEXT = {
         'open_source': 'Open source',
         'open_ticket_page': 'Open ticket page',
         'open_stop_source': 'Open stop source',
+        'link_unverified': 'Public link could not be verified.',
         'reference': 'Reference',
         'time_unknown': 'Time unknown',
         'unknown_day': 'Unknown day',
         'followup': 'Follow-up',
         'refine_plan': 'Refine the plan',
         'followup_body': 'Ask Dion to revise the current plan instead of creating a new one from scratch.',
+        'followup_constraints_note': 'Current form filters still apply during follow-up updates. Change them above if you want to relax a constraint.',
         'followup_prompt': 'What should Dion adjust?',
         'followup_placeholder': 'e.g. Make Friday more elegant, reduce sightseeing, and add a stronger bar recommendation.',
         'update_plan': 'Update current plan',
@@ -582,12 +584,14 @@ UI_TEXT = {
         'open_source': 'Quelle öffnen',
         'open_ticket_page': 'Ticketseite öffnen',
         'open_stop_source': 'Stopp-Quelle öffnen',
+        'link_unverified': 'Der öffentliche Link konnte nicht verifiziert werden.',
         'reference': 'Referenz',
         'time_unknown': 'Uhrzeit unbekannt',
         'unknown_day': 'Unbekannter Tag',
         'followup': 'Follow-up',
         'refine_plan': 'Plan anpassen',
         'followup_body': 'Bitte Dion, den aktuellen Plan gezielt zu überarbeiten statt einen komplett neuen zu erstellen.',
+        'followup_constraints_note': 'Die aktuellen Formularfilter gelten auch bei Follow-up-Updates weiter. Ändere sie oben, wenn du eine Einschränkung lockern möchtest.',
         'followup_prompt': 'Was soll Dion anpassen?',
         'followup_placeholder': 'z. B. Mach den Freitag eleganter, reduziere Sightseeing und ergänze eine stärkere Bar-Empfehlung.',
         'update_plan': 'Aktuellen Plan aktualisieren',
@@ -678,9 +682,6 @@ def init_session_state() -> None:
         'last_error': None,
         'followup_text': '',
         'planner_form_version': 0,
-        'dion_scope_events': True,
-        'dion_scope_sightseeing': True,
-        'dion_scope_food': True,
     }
     for key, value in defaults.items():
         if key not in st.session_state:
@@ -694,9 +695,6 @@ def reset_planner_state() -> None:
     st.session_state['last_markdown_report'] = None
     st.session_state['last_error'] = None
     st.session_state['followup_text'] = ''
-    st.session_state['dion_scope_events'] = True
-    st.session_state['dion_scope_sightseeing'] = True
-    st.session_state['dion_scope_food'] = True
     st.session_state['planner_form_version'] += 1
 
 
@@ -844,6 +842,11 @@ def render_hero() -> None:
 
 
 def render_scope_controls(disabled: bool = False) -> tuple[bool, bool, bool]:
+    scope_version = st.session_state['planner_form_version']
+    events_key = f'dion_scope_events_{scope_version}'
+    sightseeing_key = f'dion_scope_sightseeing_{scope_version}'
+    food_key = f'dion_scope_food_{scope_version}'
+
     st.markdown(
         """
         <div class='dion-panel dion-section-space'>
@@ -869,7 +872,8 @@ def render_scope_controls(disabled: bool = False) -> tuple[bool, bool, bool]:
         )
         events_enabled = st.checkbox(
             'Include events',
-            key = 'dion_scope_events',
+            key = events_key,
+            value = st.session_state.get(events_key, True),
             disabled = disabled,
         )
 
@@ -885,7 +889,8 @@ def render_scope_controls(disabled: bool = False) -> tuple[bool, bool, bool]:
         )
         sightseeing_enabled = st.checkbox(
             'Include sightseeing',
-            key = 'dion_scope_sightseeing',
+            key = sightseeing_key,
+            value = st.session_state.get(sightseeing_key, True),
             disabled = disabled,
         )
 
@@ -901,7 +906,8 @@ def render_scope_controls(disabled: bool = False) -> tuple[bool, bool, bool]:
         )
         food_drink_enabled = st.checkbox(
             'Include food & drinks',
-            key = 'dion_scope_food',
+            key = food_key,
+            value = st.session_state.get(food_key, True),
             disabled = disabled,
         )
 
@@ -988,24 +994,24 @@ def render_form(
 
             st.markdown("<div class='dion-form-section'>", unsafe_allow_html = True)
             st.markdown('### Trip Setup')
-            col_date_1, col_date_2 = st.columns(2)
-            with col_date_1:
-                date_start = st.date_input(
-                    'Start date',
-                    value = date_start_value,
-                    min_value = date.today(),
-                )
-            with col_date_2:
-                date_end = st.date_input(
-                    'End date',
-                    value = date_end_value,
-                    min_value = date.today(),
-                )
-            include_last_day = st.checkbox(
-                'Include last trip day in itinerary',
-                value = include_last_day_value,
-                help = 'Keep the final day visible in the itinerary even if it is mainly an arrival or departure day.',
+            travel_dates = st.date_input(
+                'Travel dates',
+                value = (date_start_value, date_end_value),
+                min_value = date.today(),
+                help = 'Select start and end date in one range picker.',
             )
+            if isinstance(travel_dates, (tuple, list)) and len(travel_dates) == 2:
+                date_start, date_end = travel_dates
+            else:
+                date_start = date_start_value
+                date_end = date_end_value
+            st.markdown("<div class='dion-soft-label'>Trip Coverage</div>", unsafe_allow_html = True)
+            include_last_day = st.toggle(
+                'Include final trip day',
+                value = include_last_day_value,
+                help = 'Keep the last calendar day in the itinerary, even if it is only a light arrival or departure day.',
+            )
+            st.caption('Turn this off if the plan should end before the final travel day.')
 
             col_setup_1, col_setup_2 = st.columns(2)
             with col_setup_1:
@@ -1127,6 +1133,7 @@ def render_form(
             st.caption(f'{len(user_notes)}/{MAX_FREE_TEXT_CHARS} characters used')
         else:
             st.markdown(_t('followup_body', existing_request))
+            st.caption(_t('followup_constraints_note', existing_request))
             followup_text = st.text_area(
                 _t('followup_prompt', existing_request),
                 value = st.session_state.get('followup_text', ''),
@@ -1276,6 +1283,7 @@ def render_status_and_run(user_request: UserRequest) -> None:
 
         progress_bar.progress(100)
         status_box.success(_t('plan_created', user_request))
+        st.rerun()
     except Exception as exc:
         traceback.print_exc()
         st.session_state['last_error'] = str(exc)
@@ -1513,6 +1521,8 @@ def _render_card(title: str, lines: list[str], source_url: str | None = None, se
             st.write(line)
         if source_url:
             st.link_button(_t('open_source', user_request), source_url)
+        else:
+            st.caption(_t('link_unverified', user_request))
         if secondary_url:
             st.link_button(_t('open_ticket_page', user_request), secondary_url)
 
@@ -1528,6 +1538,8 @@ def _render_food_grid(food_items, user_request: UserRequest | None = None) -> No
                 st.write(f"{_t('opening_hours', user_request)}: {place.opening_hours or 'unknown'}")
                 if place.source_url:
                     st.link_button(_t('open_source', user_request), place.source_url)
+                else:
+                    st.caption(_t('link_unverified', user_request))
 
 
 def _render_day_overview(day, user_request: UserRequest | None = None) -> None:
@@ -1541,6 +1553,8 @@ def _render_day_overview(day, user_request: UserRequest | None = None) -> None:
                 st.write(f"{_t('reference', user_request)}: {stop.linked_item_name}")
             if stop.source_url:
                 st.link_button(_t('open_stop_source', user_request), stop.source_url)
+            elif stop.linked_item_name:
+                st.caption(_t('link_unverified', user_request))
 
 
 def render_followup_section() -> None:

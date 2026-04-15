@@ -24,6 +24,14 @@ def _append_url_suffix(url: str | None) -> str:
     return f' | {url}' if url else ''
 
 
+def _is_german_report(user_request: UserRequest) -> bool:
+    return bool(
+        user_request.delivery
+        and getattr(user_request.delivery, 'language', None)
+        and user_request.delivery.language.value == 'Deutsch'
+    )
+
+
 def _fmt_text(value: str | None, fallback: str = 'unknown') -> str:
     cleaned = (value or '').strip()
     return cleaned or fallback
@@ -180,6 +188,46 @@ def _build_personal_note_section(core_result: CoreResult) -> MarkdownSection | N
 
     lines = [f'- {line}' for line in core_result.personal_feedback]
     return MarkdownSection(heading = "Dion's Personal Note", body_markdown = '\n'.join(lines))
+
+
+def append_missing_link_note_section(
+    markdown_report: MarkdownReport,
+    core_result: CoreResult,
+    user_request: UserRequest,
+) -> MarkdownReport:
+    missing_sightseeing = [spot.name for spot in core_result.sightseeing_spots if not spot.source_url]
+    missing_food = [place.name for place in core_result.food_and_drink_spots if not place.source_url]
+
+    if not missing_sightseeing and not missing_food:
+        return markdown_report
+
+    existing_headings = {section.heading.strip().casefold() for section in markdown_report.sections}
+    german = _is_german_report(user_request)
+    heading = 'Link-Hinweis' if german else 'Link Availability'
+    if heading.casefold() in existing_headings:
+        return markdown_report
+
+    lines: list[str] = []
+    if german:
+        lines.append('- Einige Orte bleiben im Plan enthalten, auch wenn kein verifizierter öffentlicher Link bestätigt werden konnte.')
+        if missing_sightseeing:
+            lines.append(f"- Sightseeing ohne verifizierten Link: {', '.join(missing_sightseeing)}.")
+        if missing_food:
+            lines.append(f"- Essen & Drinks ohne verifizierten Link: {', '.join(missing_food)}.")
+    else:
+        lines.append('- Some places remain in the plan even though no verified public link could be confirmed.')
+        if missing_sightseeing:
+            lines.append(f"- Sightseeing without a verified link: {', '.join(missing_sightseeing)}.")
+        if missing_food:
+            lines.append(f"- Food/drink venues without a verified link: {', '.join(missing_food)}.")
+
+    markdown_report.sections.append(
+        MarkdownSection(
+            heading = heading,
+            body_markdown = '\n'.join(lines),
+        )
+    )
+    return markdown_report
 
 
 def core_result_to_markdown_report(

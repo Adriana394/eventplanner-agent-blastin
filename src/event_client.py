@@ -28,8 +28,8 @@ from IPython.display import display, Markdown
 
 from mcp_servers.mcp_servers import get_server_config, bundle_servers
 from src.schemas import (UserRequest, CoreResult, UIResult, MarkdownReport, ReporterResult, ValidationResult, ValidationIssue, Money,
-                         UIEventTeaser, UISpotItem, UIDayOverview, UIItineraryStop, UIFoodDrinkSpot)
-from src.reporting import render_markdown, save_report_markdown
+                         UIEventTeaser, UISpotItem, UIDayOverview, UIItineraryStop, UIFoodDrinkSpot, ItineraryStop)
+from src.reporting import append_missing_link_note_section, render_markdown, save_report_markdown
 
 from src.instructions import SYSTEM_INSTRUCTIONS_PLANNER, SYSTEM_INSTRUCTIONS_REPORTER, SYSTEM_INSTRUCTIONS_VALIDATOR
 
@@ -270,6 +270,31 @@ def _normalize_public_url(url: str | None) -> str | None:
     return normalized
 
 
+async def _is_public_place_url_reachable(url: str | None) -> bool:
+    normalized_url = _normalize_public_url(url)
+    if not normalized_url:
+        return False
+
+    # Eventim links are treated as trusted event links elsewhere.
+    if any(host in normalized_url for host in EVENTIM_HOSTS):
+        return True
+
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (compatible; DionLinkChecker/1.0)',
+        'Accept': 'text/html,application/xhtml+xml',
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout = 12.0, follow_redirects = True, headers = headers) as client:
+            response = await client.get(normalized_url)
+            if response.status_code >= 400:
+                return False
+            content_type = (response.headers.get('content-type') or '').casefold()
+            return 'html' in content_type or 'text/' in content_type
+    except Exception:
+        return False
+
+
 async def _http_get_json(url: str, params: dict | None = None) -> dict:
     async with httpx.AsyncClient(timeout = 30.0) as client:
         response = await client.get(url, params = params)
@@ -395,6 +420,39 @@ def _attach_event_price_info_warning(core_result: CoreResult) -> CoreResult:
     return core_result
 
 
+def _sync_itinerary_stop_source_urls(core_result: CoreResult) -> CoreResult:
+    event_lookup = {
+        _normalize_name_key(event.name): event
+        for event in core_result.events
+        if _normalize_name_key(event.name)
+    }
+    sightseeing_lookup = {
+        _normalize_name_key(spot.name): spot
+        for spot in core_result.sightseeing_spots
+        if _normalize_name_key(spot.name)
+    }
+    food_lookup = {
+        _normalize_name_key(place.name): place
+        for place in core_result.food_and_drink_spots
+        if _normalize_name_key(place.name)
+    }
+
+    for day in core_result.itinerary:
+        for stop in day.stops:
+            linked_name_key = _normalize_name_key(stop.linked_item_name or stop.title)
+            if not linked_name_key:
+                continue
+
+            if linked_name_key in event_lookup:
+                stop.source_url = event_lookup[linked_name_key].source_url
+            elif linked_name_key in sightseeing_lookup:
+                stop.source_url = sightseeing_lookup[linked_name_key].source_url
+            elif linked_name_key in food_lookup:
+                stop.source_url = food_lookup[linked_name_key].source_url
+
+    return core_result
+
+
 def _normalize_generic_text(value: str | None) -> str:
     normalized = (value or '').strip().casefold()
     return normalized.replace('ä', 'ae').replace('ö', 'oe').replace('ü', 'ue').replace('ß', 'ss')
@@ -439,23 +497,28 @@ def _sanitize_itinerary_placeholders(core_result: CoreResult) -> CoreResult:
 
 
 def _sanitize_food_and_drink_source_urls(core_result: CoreResult) -> CoreResult:
-    missing_source_names: list[str] = []
+    malformed_source_names: list[str] = []
 
     for place in core_result.food_and_drink_spots:
-        normalized_url = _normalize_public_url(place.source_url)
+        raw_source_url = (place.source_url or '').strip()
+        if not raw_source_url:
+            place.source_url = None
+            continue
+
+        normalized_url = _normalize_public_url(raw_source_url)
         if normalized_url:
             place.source_url = normalized_url
             continue
 
         place.source_url = None
-        missing_source_names.append(place.name)
+        malformed_source_names.append(place.name)
 
-    if missing_source_names:
-        preview_names = ', '.join(missing_source_names[:3])
-        extra_count = len(missing_source_names) - min(len(missing_source_names), 3)
+    if malformed_source_names:
+        preview_names = ', '.join(malformed_source_names[:3])
+        extra_count = len(malformed_source_names) - min(len(malformed_source_names), 3)
         suffix = f' (+{extra_count} more)' if extra_count > 0 else ''
         core_result.warnings.append(
-            f'Verified food/drink venues kept without source URL because the venue page could not be confirmed: {preview_names}{suffix}.'
+            f'Some provided food/drink source URLs were malformed and were removed: {preview_names}{suffix}.'
         )
 
     return core_result
@@ -491,28 +554,201 @@ def _sanitize_event_source_urls(core_result: CoreResult) -> CoreResult:
 
 
 def _sanitize_sightseeing_source_urls(core_result: CoreResult) -> CoreResult:
-    invalid_source_names: list[str] = []
+    malformed_source_names: list[str] = []
 
     for spot in core_result.sightseeing_spots:
-        normalized_url = _normalize_public_url(spot.source_url)
+        raw_source_url = (spot.source_url or '').strip()
+        if not raw_source_url:
+            spot.source_url = None
+            continue
+
+        normalized_url = _normalize_public_url(raw_source_url)
         if normalized_url:
             spot.source_url = normalized_url
             continue
-        invalid_source_names.append(spot.name)
+        spot.source_url = None
+        malformed_source_names.append(spot.name)
 
-    if invalid_source_names:
-        preview_names = ', '.join(invalid_source_names[:3])
-        extra_count = len(invalid_source_names) - min(len(invalid_source_names), 3)
+    if malformed_source_names:
+        preview_names = ', '.join(malformed_source_names[:3])
+        extra_count = len(malformed_source_names) - min(len(malformed_source_names), 3)
         suffix = f' (+{extra_count} more)' if extra_count > 0 else ''
         core_result.warnings.append(
-            f'Some sightseeing source URLs look invalid or malformed and should be rechecked: {preview_names}{suffix}.'
+            f'Some provided sightseeing source URLs were malformed and were removed: {preview_names}{suffix}.'
         )
+
+    return core_result
+
+
+async def _verify_place_source_urls(core_result: CoreResult) -> CoreResult:
+    removed_link_names: list[str] = []
+
+    for spot in core_result.sightseeing_spots:
+        normalized_url = _normalize_public_url(spot.source_url)
+        if not normalized_url:
+            spot.source_url = None
+            removed_link_names.append(spot.name)
+            continue
+        if await _is_public_place_url_reachable(normalized_url):
+            spot.source_url = normalized_url
+        else:
+            spot.source_url = None
+            removed_link_names.append(spot.name)
+
+    for place in core_result.food_and_drink_spots:
+        normalized_url = _normalize_public_url(place.source_url)
+        if not normalized_url:
+            place.source_url = None
+            removed_link_names.append(place.name)
+            continue
+        if await _is_public_place_url_reachable(normalized_url):
+            place.source_url = normalized_url
+        else:
+            place.source_url = None
+            removed_link_names.append(place.name)
+
+    if removed_link_names:
+        unique_names = list(dict.fromkeys(removed_link_names))
+        preview_names = ', '.join(unique_names[:4])
+        extra_count = len(unique_names) - min(len(unique_names), 4)
+        suffix = f' (+{extra_count} more)' if extra_count > 0 else ''
+        core_result.warnings.append(
+            f'No verified public link could be confirmed for: {preview_names}{suffix}. The place was kept, but its link was removed.'
+        )
+
+    return core_result
+
+
+def _time_to_minutes(value: str | None) -> int | None:
+    key = _extract_time_sort_key(value)
+    if key is None:
+        return None
+    return key[0] * 60 + key[1]
+
+
+def _minutes_to_time(minutes: int) -> str:
+    bounded = max(0, min(minutes, 23 * 60 + 59))
+    hour, minute = divmod(bounded, 60)
+    return f'{hour:02d}:{minute:02d}'
+
+
+def _pick_food_spot(core_result: CoreResult, preferred_types: list[str], used_names: set[str]) -> object | None:
+    normalized_preferred = [item.strip().casefold() for item in preferred_types]
+    for venue_type in normalized_preferred:
+        for place in core_result.food_and_drink_spots:
+            if _normalize_name_key(place.name) in used_names:
+                continue
+            if place.venue_type.casefold() == venue_type:
+                return place
+    for place in core_result.food_and_drink_spots:
+        if _normalize_name_key(place.name) not in used_names:
+            return place
+    return None
+
+
+def _insert_default_food_structure(user_request: UserRequest, core_result: CoreResult) -> CoreResult:
+    if not user_request.trip.food_drink_enabled or not core_result.food_and_drink_spots:
+        return core_result
+
+    for day in core_result.itinerary:
+        if not day.stops:
+            continue
+
+        used_place_names = {
+            _normalize_name_key(stop.linked_item_name)
+            for stop in day.stops
+            if stop.stop_type == 'food' and _normalize_name_key(stop.linked_item_name)
+        }
+        existing_food_minutes = [_time_to_minutes(stop.start_time) for stop in day.stops if stop.stop_type == 'food']
+        existing_food_minutes = [minute for minute in existing_food_minutes if minute is not None]
+        first_stop_minutes = [_time_to_minutes(stop.start_time) for stop in day.stops if _time_to_minutes(stop.start_time) is not None]
+        earliest_stop_minute = min(first_stop_minutes) if first_stop_minutes else None
+        has_breakfast = any(minute is not None and minute < 11 * 60 for minute in existing_food_minutes)
+        has_lunch = any(minute is not None and 11 * 60 <= minute < 15 * 60 for minute in existing_food_minutes)
+        has_dinner = any(minute is not None and minute >= 17 * 60 for minute in existing_food_minutes)
+        has_event = any(stop.stop_type == 'event' for stop in day.stops)
+        has_sightseeing = any(stop.stop_type == 'sightseeing' for stop in day.stops)
+        new_stops: list[ItineraryStop] = []
+
+        if not has_breakfast and (has_sightseeing or (earliest_stop_minute is not None and earliest_stop_minute >= 10 * 60)):
+            breakfast_spot = _pick_food_spot(core_result, ['cafe', 'restaurant'], used_place_names)
+            if breakfast_spot is not None:
+                used_place_names.add(_normalize_name_key(breakfast_spot.name))
+                target_minute = 9 * 60
+                if earliest_stop_minute is not None:
+                    target_minute = min(target_minute, max(8 * 60, earliest_stop_minute - 90))
+                new_stops.append(
+                    ItineraryStop(
+                        stop_type = 'food',
+                        title = f'Breakfast at {breakfast_spot.name}',
+                        start_time = _minutes_to_time(target_minute),
+                        notes = 'Start the day with a relaxed breakfast stop before sightseeing or other activities.',
+                        linked_item_name = breakfast_spot.name,
+                        source_url = breakfast_spot.source_url,
+                    )
+                )
+
+        if not has_lunch and has_sightseeing:
+            lunch_spot = _pick_food_spot(core_result, ['restaurant', 'cafe'], used_place_names)
+            if lunch_spot is not None:
+                used_place_names.add(_normalize_name_key(lunch_spot.name))
+                new_stops.append(
+                    ItineraryStop(
+                        stop_type = 'food',
+                        title = f'Lunch break at {lunch_spot.name}',
+                        start_time = '13:00',
+                        notes = 'Use midday for a flexible lunch or cafe stop before the next city highlight.',
+                        linked_item_name = lunch_spot.name,
+                        source_url = lunch_spot.source_url,
+                    )
+                )
+
+        if not has_dinner and (has_event or has_sightseeing):
+            dinner_spot = _pick_food_spot(core_result, ['restaurant', 'bar', 'other', 'cafe'], used_place_names)
+            if dinner_spot is not None:
+                used_place_names.add(_normalize_name_key(dinner_spot.name))
+                event_start_minutes = min(
+                    [_time_to_minutes(stop.start_time) for stop in day.stops if stop.stop_type == 'event' and _time_to_minutes(stop.start_time) is not None],
+                    default = None,
+                )
+                dinner_minute = 18 * 60
+                if event_start_minutes is not None:
+                    dinner_minute = max(17 * 60, event_start_minutes - 120)
+                new_stops.append(
+                    ItineraryStop(
+                        stop_type = 'food',
+                        title = f'Dinner at {dinner_spot.name}',
+                        start_time = _minutes_to_time(dinner_minute),
+                        notes = 'Use this as the default evening meal stop before the main night program.',
+                        linked_item_name = dinner_spot.name,
+                        source_url = dinner_spot.source_url,
+                    )
+                )
+
+        if new_stops:
+            day.stops.extend(new_stops)
+            day.stops.sort(key = lambda stop: (_time_to_minutes(stop.start_time) is None, _time_to_minutes(stop.start_time) or 24 * 60, stop.title))
 
     return core_result
 
 
 def _normalize_issue_message(message: str) -> str:
     return ' '.join((message or '').split()).strip()
+
+
+def _dedupe_core_warnings(core_result: CoreResult) -> CoreResult:
+    seen: set[str] = set()
+    unique_warnings: list[str] = []
+
+    for warning in core_result.warnings:
+        normalized_warning = _normalize_issue_message(warning).casefold()
+        if not normalized_warning or normalized_warning in seen:
+            continue
+        seen.add(normalized_warning)
+        unique_warnings.append(_normalize_issue_message(warning))
+
+    core_result.warnings = unique_warnings
+    return core_result
 
 
 def _normalize_name_key(value: str | None) -> str:
@@ -942,7 +1178,7 @@ def _collect_deterministic_validation_issues(user_request: UserRequest, core_res
 
     invalid_external_links: list[str] = []
     for spot in core_result.sightseeing_spots:
-        if not _normalize_public_url(spot.source_url):
+        if spot.source_url and not _normalize_public_url(spot.source_url):
             invalid_external_links.append(spot.name)
     for place in core_result.food_and_drink_spots:
         if place.source_url and not _normalize_public_url(place.source_url):
@@ -1005,9 +1241,12 @@ async def _repair_core_result_if_needed(
         run_config = run_config,
     )
     repaired_core_result = _sanitize_itinerary_placeholders(repair_run.final_output)
+    repaired_core_result = _insert_default_food_structure(user_request, repaired_core_result)
     repaired_core_result = _sanitize_event_source_urls(repaired_core_result)
     repaired_core_result = _sanitize_sightseeing_source_urls(repaired_core_result)
     repaired_core_result = _sanitize_food_and_drink_source_urls(repaired_core_result)
+    repaired_core_result = await _verify_place_source_urls(repaired_core_result)
+    repaired_core_result = _sync_itinerary_stop_source_urls(repaired_core_result)
     final_validation_result = await _run_validator(
         validator_agent = validator_agent,
         user_request = user_request,
@@ -1257,9 +1496,12 @@ async def run_full_planner_flow(
         authoritative_events = await _fetch_authoritative_events_for_trip(user_request)
         core_result = _sync_core_result_events_with_authoritative_data(core_result, authoritative_events)
         core_result = _sanitize_itinerary_placeholders(core_result)
+        core_result = _insert_default_food_structure(user_request, core_result)
         core_result = _sanitize_event_source_urls(core_result)
         core_result = _sanitize_sightseeing_source_urls(core_result)
         core_result = _sanitize_food_and_drink_source_urls(core_result)
+        core_result = await _verify_place_source_urls(core_result)
+        core_result = _sync_itinerary_stop_source_urls(core_result)
         core_result, _ = await _repair_core_result_if_needed(
             planner_agent = dion_planner,
             validator_agent = dion_validator,
@@ -1268,10 +1510,14 @@ async def run_full_planner_flow(
             run_config = run_config,
         )
         core_result = _sync_core_result_events_with_authoritative_data(core_result, authoritative_events)
+        core_result = _insert_default_food_structure(user_request, core_result)
         core_result = _sanitize_event_source_urls(core_result)
         core_result = _sanitize_sightseeing_source_urls(core_result)
         core_result = _sanitize_food_and_drink_source_urls(core_result)
+        core_result = await _verify_place_source_urls(core_result)
+        core_result = _sync_itinerary_stop_source_urls(core_result)
         core_result = _attach_event_price_info_warning(core_result)
+        core_result = _dedupe_core_warnings(core_result)
         ui_result = core_to_ui(core_result = core_result)
         
         reporter_job = {
@@ -1289,7 +1535,11 @@ async def run_full_planner_flow(
             reporter_run = await Runner.run(dion_reporter, reporter_input_text, run_config = run_config)
             
         reporter_result = reporter_run.final_output
-        markdown_report = reporter_result.markdown_report
+        markdown_report = append_missing_link_note_section(
+            reporter_result.markdown_report,
+            core_result,
+            user_request,
+        )
         saved_report_path = await _persist_report_to_expected_path(
             fs_server = fs,
             markdown_report = markdown_report,
@@ -1377,9 +1627,12 @@ async def run_followup_planner_flow(
         authoritative_events = await _fetch_authoritative_events_for_trip(original_request)
         core_result = _sync_core_result_events_with_authoritative_data(core_result, authoritative_events)
         core_result = _sanitize_itinerary_placeholders(core_result)
+        core_result = _insert_default_food_structure(original_request, core_result)
         core_result = _sanitize_event_source_urls(core_result)
         core_result = _sanitize_sightseeing_source_urls(core_result)
         core_result = _sanitize_food_and_drink_source_urls(core_result)
+        core_result = await _verify_place_source_urls(core_result)
+        core_result = _sync_itinerary_stop_source_urls(core_result)
         core_result, _ = await _repair_core_result_if_needed(
             planner_agent = dion_planner,
             validator_agent = dion_validator,
@@ -1388,10 +1641,14 @@ async def run_followup_planner_flow(
             run_config = run_config,
         )
         core_result = _sync_core_result_events_with_authoritative_data(core_result, authoritative_events)
+        core_result = _insert_default_food_structure(original_request, core_result)
         core_result = _sanitize_event_source_urls(core_result)
         core_result = _sanitize_sightseeing_source_urls(core_result)
         core_result = _sanitize_food_and_drink_source_urls(core_result)
+        core_result = await _verify_place_source_urls(core_result)
+        core_result = _sync_itinerary_stop_source_urls(core_result)
         core_result = _attach_event_price_info_warning(core_result)
+        core_result = _dedupe_core_warnings(core_result)
         ui_result = core_to_ui(core_result = core_result)
 
         reporter_job = {
@@ -1409,7 +1666,11 @@ async def run_followup_planner_flow(
             reporter_run = await Runner.run(dion_reporter, reporter_input_text, run_config = run_config)
 
         reporter_result = reporter_run.final_output
-        markdown_report = reporter_result.markdown_report
+        markdown_report = append_missing_link_note_section(
+            reporter_result.markdown_report,
+            core_result,
+            original_request,
+        )
         saved_report_path = await _persist_report_to_expected_path(
             fs_server = fs,
             markdown_report = markdown_report,
