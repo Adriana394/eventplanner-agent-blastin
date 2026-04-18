@@ -15,8 +15,6 @@ from zoneinfo import ZoneInfo
 
 import httpx
 
-import mcp
-from mcp import StdioServerParameters
 from agents.mcp import MCPServerStdio
 
 from openai import AsyncOpenAI
@@ -24,14 +22,51 @@ from openai import AsyncOpenAI
 from agents import FunctionTool, Runner, Agent, OpenAIProvider, RunConfig, trace
 from agents.exceptions import ModelBehaviorError
 
-from IPython.display import display, Markdown
-
 from mcp_servers.mcp_servers import get_server_config, bundle_servers
 from src.schemas import (UserRequest, CoreResult, UIResult, MarkdownReport, ReporterResult, ValidationResult, ValidationIssue, Money,
                          UIEventTeaser, UISpotItem, UIDayOverview, UIItineraryStop, UIFoodDrinkSpot, ItineraryStop)
 from src.reporting import append_missing_link_note_section, render_markdown, save_report_markdown
 
 from src.instructions import SYSTEM_INSTRUCTIONS_PLANNER, SYSTEM_INSTRUCTIONS_REPORTER, SYSTEM_INSTRUCTIONS_VALIDATOR
+
+from typing import Callable
+
+ProgressCallback = Callable[[int, str], None]
+
+
+def _get_progress_language(user_request: UserRequest) -> str:
+    if user_request.delivery and user_request.delivery.language:
+        return 'de' if user_request.delivery.language.value == 'Deutsch' else 'en'
+    return 'en'
+
+
+PROGRESS_MESSAGES = {
+    'en': {
+        'starting_servers': 'Starting MCP servers...',
+        'searching': 'Searching for events and places...',
+        'building_plan': 'Building the plan...',
+        'validating': 'Validating and refining the plan...',
+        'post_processing': 'Processing and verifying results...',
+        'writing_report': 'Writing the report...',
+        'saving_report': 'Saving report...',
+        'revising_plan': 'Revising the current plan...',
+    },
+    'de': {
+        'starting_servers': 'MCP-Server werden gestartet...',
+        'searching': 'Events und Orte werden gesucht...',
+        'building_plan': 'Plan wird erstellt...',
+        'validating': 'Plan wird geprueft und verfeinert...',
+        'post_processing': 'Ergebnisse werden verarbeitet und geprueft...',
+        'writing_report': 'Bericht wird geschrieben...',
+        'saving_report': 'Bericht wird gespeichert...',
+        'revising_plan': 'Aktueller Plan wird ueberarbeitet...',
+    },
+}
+
+
+def _progress(on_progress: ProgressCallback | None, percent: int, lang: str, key: str) -> None:
+    if on_progress is not None:
+        on_progress(percent, PROGRESS_MESSAGES[lang][key])
 
 
 load_dotenv(override = True)
@@ -581,31 +616,23 @@ def _sanitize_sightseeing_source_urls(core_result: CoreResult) -> CoreResult:
 
 
 async def _verify_place_source_urls(core_result: CoreResult) -> CoreResult:
+    all_items = list(core_result.sightseeing_spots) + list(core_result.food_and_drink_spots)
+    if not all_items:
+        return core_result
+
+    urls = [_normalize_public_url(item.source_url) for item in all_items]
+    reachable = await asyncio.gather(*(
+        _is_public_place_url_reachable(url) if url else _false()
+        for url in urls
+    ))
+
     removed_link_names: list[str] = []
-
-    for spot in core_result.sightseeing_spots:
-        normalized_url = _normalize_public_url(spot.source_url)
-        if not normalized_url:
-            spot.source_url = None
-            removed_link_names.append(spot.name)
-            continue
-        if await _is_public_place_url_reachable(normalized_url):
-            spot.source_url = normalized_url
+    for item, url, is_ok in zip(all_items, urls, reachable):
+        if url and is_ok:
+            item.source_url = url
         else:
-            spot.source_url = None
-            removed_link_names.append(spot.name)
-
-    for place in core_result.food_and_drink_spots:
-        normalized_url = _normalize_public_url(place.source_url)
-        if not normalized_url:
-            place.source_url = None
-            removed_link_names.append(place.name)
-            continue
-        if await _is_public_place_url_reachable(normalized_url):
-            place.source_url = normalized_url
-        else:
-            place.source_url = None
-            removed_link_names.append(place.name)
+            item.source_url = None
+            removed_link_names.append(item.name)
 
     if removed_link_names:
         unique_names = list(dict.fromkeys(removed_link_names))
@@ -617,6 +644,10 @@ async def _verify_place_source_urls(core_result: CoreResult) -> CoreResult:
         )
 
     return core_result
+
+
+async def _false() -> bool:
+    return False
 
 
 def _time_to_minutes(value: str | None) -> int | None:
@@ -1262,6 +1293,22 @@ async def _repair_core_result_if_needed(
     return repaired_core_result, final_validation_result
 
 
+async def _apply_post_processing_pipeline(
+    user_request: UserRequest,
+    core_result: CoreResult,
+    authoritative_events: dict[str, dict],
+) -> CoreResult:
+    core_result = _sync_core_result_events_with_authoritative_data(core_result, authoritative_events)
+    core_result = _sanitize_itinerary_placeholders(core_result)
+    core_result = _insert_default_food_structure(user_request, core_result)
+    core_result = _sanitize_event_source_urls(core_result)
+    core_result = _sanitize_sightseeing_source_urls(core_result)
+    core_result = _sanitize_food_and_drink_source_urls(core_result)
+    core_result = await _verify_place_source_urls(core_result)
+    core_result = _sync_itinerary_stop_source_urls(core_result)
+    return core_result
+
+
 # Build input text for Agents
 def build_planner_input_text(user_request: UserRequest) -> str:
     selected_language = (
@@ -1356,12 +1403,9 @@ Create a MarkdownReport from the following planning result.
 
 You must:
 1. Build the MarkdownReport object from the provided data.
-2. Save the markdown report as a .md file in reports_dir using the Filesystem MCP.
-3. Use filename_hint exactly as the filename.
-4. Return a ReporterResult containing:
-   - markdown_report
-   - saved_report_path
-5. Write the MarkdownReport content in this language: {selected_language}.
+2. Return a ReporterResult containing the markdown_report.
+3. Write the MarkdownReport content in this language: {selected_language}.
+4. The report file will be saved automatically by the system.
 
 Reporter job:
 {json.dumps(reporter_job, ensure_ascii = False, indent = 2)}
@@ -1443,8 +1487,9 @@ async def run_full_planner_flow(
     planner_model: str | None = None,
     reporter_model: str | None = None,
     validator_model: str | None = None,
+    on_progress: ProgressCallback | None = None,
 ) -> dict:
-    
+    lang = _get_progress_language(user_request)
     configs = get_server_config(reports_dir)
     model_selection = get_default_model_selection(model_provider_name)
     resolved_provider = model_selection['provider']
@@ -1453,9 +1498,10 @@ async def run_full_planner_flow(
     resolved_validator_model = (validator_model or model_selection['validator_model']).strip()
     model_provider = _build_model_provider(resolved_provider)
     run_config = RunConfig(model_provider = model_provider)
-    
+
     planner_input_text = build_planner_input_text(user_request)
-    
+    _progress(on_progress, 5, lang, 'starting_servers')
+
     async with bundle_servers(configs) as servers:
         pw = servers['playwright']
         fs = servers['filesystem']
@@ -1474,7 +1520,7 @@ async def run_full_planner_flow(
             name = 'Dion_Reporter',
             instructions = SYSTEM_INSTRUCTIONS_REPORTER,
             model = resolved_reporter_model,
-            mcp_servers = [fs],
+            mcp_servers = [],
             output_type = ReporterResult
         )
 
@@ -1485,23 +1531,23 @@ async def run_full_planner_flow(
             output_type = ValidationResult,
         )
         
+        _progress(on_progress, 15, lang, 'searching')
+
         with trace('dion_planner'):
             planner_run = await _run_planner_with_schema_retry(
                 dion_planner,
                 planner_input_text,
                 run_config = run_config,
             )
-            
+
+        _progress(on_progress, 50, lang, 'building_plan')
+
         core_result = planner_run.final_output
         authoritative_events = await _fetch_authoritative_events_for_trip(user_request)
-        core_result = _sync_core_result_events_with_authoritative_data(core_result, authoritative_events)
-        core_result = _sanitize_itinerary_placeholders(core_result)
-        core_result = _insert_default_food_structure(user_request, core_result)
-        core_result = _sanitize_event_source_urls(core_result)
-        core_result = _sanitize_sightseeing_source_urls(core_result)
-        core_result = _sanitize_food_and_drink_source_urls(core_result)
-        core_result = await _verify_place_source_urls(core_result)
-        core_result = _sync_itinerary_stop_source_urls(core_result)
+        core_result = await _apply_post_processing_pipeline(user_request, core_result, authoritative_events)
+
+        _progress(on_progress, 65, lang, 'validating')
+
         core_result, _ = await _repair_core_result_if_needed(
             planner_agent = dion_planner,
             validator_agent = dion_validator,
@@ -1509,17 +1555,13 @@ async def run_full_planner_flow(
             core_result = core_result,
             run_config = run_config,
         )
-        core_result = _sync_core_result_events_with_authoritative_data(core_result, authoritative_events)
-        core_result = _insert_default_food_structure(user_request, core_result)
-        core_result = _sanitize_event_source_urls(core_result)
-        core_result = _sanitize_sightseeing_source_urls(core_result)
-        core_result = _sanitize_food_and_drink_source_urls(core_result)
-        core_result = await _verify_place_source_urls(core_result)
-        core_result = _sync_itinerary_stop_source_urls(core_result)
+        core_result = await _apply_post_processing_pipeline(user_request, core_result, authoritative_events)
         core_result = _attach_event_price_info_warning(core_result)
         core_result = _dedupe_core_warnings(core_result)
         ui_result = core_to_ui(core_result = core_result)
-        
+
+        _progress(on_progress, 80, lang, 'writing_report')
+
         reporter_job = {
             'user_request': user_request.model_dump(mode = 'json'),
             'core_result': core_result.model_dump(mode = 'json'),
@@ -1528,26 +1570,28 @@ async def run_full_planner_flow(
             'now_iso': datetime.now().isoformat(timespec = 'seconds'),
             'filename_hint': f"report_{user_request.trip.city.strip().lower().replace(' ', '_')}_{user_request.trip.date_start.isoformat()}_to_{user_request.trip.date_end.isoformat()}.md"
         }
-        
+
         reporter_input_text = build_reporter_input_text(reporter_job)
-        
+
         with trace('dion_reporter'):
             reporter_run = await Runner.run(dion_reporter, reporter_input_text, run_config = run_config)
-            
+
         reporter_result = reporter_run.final_output
         markdown_report = append_missing_link_note_section(
             reporter_result.markdown_report,
             core_result,
             user_request,
         )
+
+        _progress(on_progress, 92, lang, 'saving_report')
+
         saved_report_path = await _persist_report_to_expected_path(
             fs_server = fs,
             markdown_report = markdown_report,
             reports_dir = reports_dir,
             filename_hint = reporter_job['filename_hint'],
         )
-        
-        
+
         return {
             'core_result': core_result,
             'ui_result': ui_result,
@@ -1559,7 +1603,7 @@ async def run_full_planner_flow(
                 'reporter_model': resolved_reporter_model,
                 'validator_model': resolved_validator_model,
             },
-        }    
+        }
 
 async def run_followup_planner_flow(
     original_request: UserRequest,
@@ -1569,7 +1613,9 @@ async def run_followup_planner_flow(
     planner_model: str | None = None,
     reporter_model: str | None = None,
     validator_model: str | None = None,
+    on_progress: ProgressCallback | None = None,
 ) -> dict:
+    lang = _get_progress_language(original_request)
     configs = get_server_config(reports_dir)
     model_selection = get_default_model_selection(model_provider_name)
     resolved_provider = model_selection['provider']
@@ -1578,13 +1624,14 @@ async def run_followup_planner_flow(
     resolved_validator_model = (validator_model or model_selection['validator_model']).strip()
     model_provider = _build_model_provider(resolved_provider)
     run_config = RunConfig(model_provider = model_provider)
-    
+
     planner_input_text = build_followup_planner_input_text(
         original_request = original_request,
         current_plan = current_plan,
         followup_message = followup_message,
     )
-    
+    _progress(on_progress, 5, lang, 'starting_servers')
+
     async with bundle_servers(configs) as servers:
         pw = servers['playwright']
         fs = servers['filesystem']
@@ -1604,7 +1651,7 @@ async def run_followup_planner_flow(
             name = 'Dion_Reporter',
             instructions = SYSTEM_INSTRUCTIONS_REPORTER,
             model = resolved_reporter_model,
-            mcp_servers = [fs],
+            mcp_servers = [],
             output_type = ReporterResult
         )
 
@@ -1615,6 +1662,8 @@ async def run_followup_planner_flow(
             output_type = ValidationResult,
         )
         
+        _progress(on_progress, 15, lang, 'revising_plan')
+
         with trace('dion_planner_followup'):
             planner_run = await _run_planner_with_schema_retry(
                 dion_planner,
@@ -1623,16 +1672,14 @@ async def run_followup_planner_flow(
                 run_config = run_config,
             )
 
+        _progress(on_progress, 50, lang, 'post_processing')
+
         core_result = planner_run.final_output
         authoritative_events = await _fetch_authoritative_events_for_trip(original_request)
-        core_result = _sync_core_result_events_with_authoritative_data(core_result, authoritative_events)
-        core_result = _sanitize_itinerary_placeholders(core_result)
-        core_result = _insert_default_food_structure(original_request, core_result)
-        core_result = _sanitize_event_source_urls(core_result)
-        core_result = _sanitize_sightseeing_source_urls(core_result)
-        core_result = _sanitize_food_and_drink_source_urls(core_result)
-        core_result = await _verify_place_source_urls(core_result)
-        core_result = _sync_itinerary_stop_source_urls(core_result)
+        core_result = await _apply_post_processing_pipeline(original_request, core_result, authoritative_events)
+
+        _progress(on_progress, 65, lang, 'validating')
+
         core_result, _ = await _repair_core_result_if_needed(
             planner_agent = dion_planner,
             validator_agent = dion_validator,
@@ -1640,16 +1687,12 @@ async def run_followup_planner_flow(
             core_result = core_result,
             run_config = run_config,
         )
-        core_result = _sync_core_result_events_with_authoritative_data(core_result, authoritative_events)
-        core_result = _insert_default_food_structure(original_request, core_result)
-        core_result = _sanitize_event_source_urls(core_result)
-        core_result = _sanitize_sightseeing_source_urls(core_result)
-        core_result = _sanitize_food_and_drink_source_urls(core_result)
-        core_result = await _verify_place_source_urls(core_result)
-        core_result = _sync_itinerary_stop_source_urls(core_result)
+        core_result = await _apply_post_processing_pipeline(original_request, core_result, authoritative_events)
         core_result = _attach_event_price_info_warning(core_result)
         core_result = _dedupe_core_warnings(core_result)
         ui_result = core_to_ui(core_result = core_result)
+
+        _progress(on_progress, 80, lang, 'writing_report')
 
         reporter_job = {
             'user_request': original_request.model_dump(mode = 'json'),
@@ -1671,6 +1714,9 @@ async def run_followup_planner_flow(
             core_result,
             original_request,
         )
+
+        _progress(on_progress, 92, lang, 'saving_report')
+
         saved_report_path = await _persist_report_to_expected_path(
             fs_server = fs,
             markdown_report = markdown_report,

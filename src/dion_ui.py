@@ -14,6 +14,8 @@ if str(ROOT_DIR) not in sys.path:
 
 from src.schemas import UserRequest
 from src.event_client import run_full_planner_flow, run_followup_planner_flow
+from src.dion_styles import DION_CSS
+from src.dion_translations import UI_TEXT
 
 
 load_dotenv(override = True)
@@ -28,433 +30,7 @@ st.set_page_config(
     initial_sidebar_state = 'collapsed',
 )
 
-st.markdown(
-    """
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
-
-        :root {
-            --blast-bg: #0e0a17;
-            --blast-bg-2: #151022;
-            --blast-surface: rgba(22, 17, 35, 0.84);
-            --blast-surface-strong: rgba(30, 23, 48, 0.96);
-            --blast-field: rgba(42, 28, 68, 0.72);
-            --blast-field-strong: rgba(52, 34, 84, 0.84);
-            --blast-border: rgba(203, 166, 247, 0.12);
-            --blast-border-strong: rgba(203, 166, 247, 0.28);
-            --blast-primary: #8b5cf6;
-            --blast-primary-deep: #6d28d9;
-            --blast-primary-soft: rgba(139, 92, 246, 0.12);
-            --blast-accent: #c084fc;
-            --blast-text: #f7f1ff;
-            --blast-muted: #bdaed4;
-            --blast-shadow: 0 26px 60px rgba(0, 0, 0, 0.34);
-        }
-
-        .stApp {
-            background:
-                radial-gradient(circle at top left, rgba(192, 132, 252, 0.10), transparent 28%),
-                radial-gradient(circle at top right, rgba(139, 92, 246, 0.18), transparent 32%),
-                linear-gradient(180deg, #120d1d 0%, var(--blast-bg) 55%, #09070f 100%);
-        }
-
-        .block-container {
-            max-width: 100%;
-            padding-top: 1.5rem;
-            padding-bottom: 2.4rem;
-            padding-left: 2.4rem;
-            padding-right: 2.4rem;
-        }
-
-        html, body, [class*="css"] {
-            font-family: 'Manrope', sans-serif;
-            color: var(--blast-text);
-        }
-
-        h1, h2, h3 {
-            color: var(--blast-text);
-            letter-spacing: -0.03em;
-            font-family: 'Manrope', sans-serif !important;
-        }
-
-        h1 {
-            font-size: 3.05rem !important;
-            line-height: 1.02 !important;
-            margin-bottom: 0.3rem !important;
-            font-weight: 800 !important;
-        }
-
-        h2 {
-            font-size: 1.35rem !important;
-            margin-bottom: 0.35rem !important;
-            font-weight: 750 !important;
-        }
-
-        h3 {
-            font-size: 1.04rem !important;
-            margin-bottom: 0.2rem !important;
-        }
-
-        p, label, div[data-testid='stMarkdownContainer'] p, div[data-testid='stCaptionContainer'] {
-            color: var(--blast-text);
-            font-size: 1rem !important;
-            line-height: 1.55 !important;
-        }
-
-        div[data-testid="stMarkdownContainer"] li,
-        div[data-testid="stCaptionContainer"],
-        div[data-testid="stMetricLabel"] {
-            color: var(--blast-muted) !important;
-        }
-
-        .dion-hero {
-            background:
-                linear-gradient(135deg, rgba(50, 29, 82, 0.96), rgba(109, 40, 217, 0.9) 58%, rgba(139, 92, 246, 0.84));
-            border: 1px solid rgba(255, 255, 255, 0.10);
-            box-shadow: 0 30px 85px rgba(107, 33, 168, 0.35);
-            border-radius: 32px;
-            padding: 2rem 1.8rem;
-            color: white;
-            overflow: hidden;
-            position: relative;
-            margin-bottom: 1.1rem;
-        }
-
-        .dion-hero::after {
-            content: "";
-            position: absolute;
-            inset: -20% -10% auto auto;
-            width: 260px;
-            height: 260px;
-            border-radius: 999px;
-            background: rgba(255, 255, 255, 0.12);
-            filter: blur(10px);
-        }
-
-        .dion-kicker {
-            text-transform: uppercase;
-            letter-spacing: 0.12em;
-            font-size: 0.82rem;
-            font-weight: 700;
-            opacity: 0.86;
-            margin-bottom: 0.7rem;
-        }
-
-        .dion-hero h1, .dion-hero p, .dion-hero div {
-            color: white !important;
-            position: relative;
-            z-index: 1;
-        }
-
-        .dion-grid-card,
-        .dion-panel,
-        div[data-testid='stForm'] {
-            background: var(--blast-surface);
-            backdrop-filter: blur(14px);
-            border: 1px solid var(--blast-border);
-            border-radius: 26px;
-            box-shadow: var(--blast-shadow);
-        }
-
-        .dion-grid-card {
-            padding: 1rem 1rem;
-            min-height: 120px;
-        }
-
-        .dion-panel {
-            padding: 1.2rem 1.2rem;
-            margin-bottom: 1.15rem;
-        }
-
-        div[data-testid='stForm'] {
-            background:
-                linear-gradient(180deg, rgba(28, 21, 44, 0.98), rgba(18, 14, 30, 0.96)) !important;
-            border: 1px solid rgba(196, 181, 253, 0.12) !important;
-            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.34) !important;
-            padding: 1.55rem 1.45rem 1.3rem 1.45rem;
-        }
-
-        .dion-soft-label {
-            text-transform: uppercase;
-            letter-spacing: 0.08em;
-            font-size: 0.8rem;
-            color: var(--blast-muted);
-            font-weight: 800;
-            margin-bottom: 0.55rem;
-        }
-
-        .dion-brief {
-            background: linear-gradient(180deg, rgba(139, 92, 246, 0.10), rgba(139, 92, 246, 0.04));
-            border: 1px solid rgba(196, 181, 253, 0.12);
-            border-radius: 20px;
-            padding: 0.95rem 0.95rem 0.8rem 0.95rem;
-            margin-bottom: 0.9rem;
-        }
-
-        .dion-pill {
-            display: inline-block;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(216, 180, 254, 0.16);
-            border-radius: 999px;
-            padding: 0.33rem 0.68rem;
-            margin-right: 0.4rem;
-            margin-bottom: 0.45rem;
-            font-size: 0.92rem;
-            color: var(--blast-text);
-        }
-
-        .dion-scope-card {
-            border-radius: 20px;
-            padding: 0.95rem 0.95rem 0.8rem 0.95rem;
-            background: linear-gradient(180deg, rgba(34, 25, 54, 0.98), rgba(21, 16, 34, 0.98));
-            border: 1px solid rgba(196, 181, 253, 0.14);
-            min-height: 128px;
-            box-shadow: 0 16px 34px rgba(0, 0, 0, 0.26);
-        }
-
-        .dion-scope-card strong {
-            display: block;
-            font-size: 1.02rem;
-            margin-bottom: 0.25rem;
-            color: var(--blast-text);
-        }
-
-        .dion-metric-card {
-            background: var(--blast-surface-strong);
-            border: 1px solid rgba(196, 181, 253, 0.12);
-            border-radius: 20px;
-            padding: 0.85rem 0.95rem 0.8rem 0.95rem;
-            box-shadow: 0 14px 32px rgba(0, 0, 0, 0.22);
-        }
-
-        .dion-section-space {
-            margin-top: 0.2rem;
-        }
-
-        .dion-nav {
-            display: flex;
-            gap: 0.65rem;
-            flex-wrap: wrap;
-            margin: 1rem 0 0.2rem 0;
-        }
-
-        .dion-nav span {
-            background: rgba(255, 255, 255, 0.08);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            color: white;
-            border-radius: 999px;
-            padding: 0.38rem 0.75rem;
-            font-size: 0.88rem;
-        }
-
-        div[data-baseweb="input"],
-        div[data-baseweb="select"],
-        div[data-baseweb="textarea"] {
-            border-radius: 16px !important;
-            background: transparent !important;
-            box-shadow: none !important;
-        }
-
-        div[data-baseweb="input"] > div,
-        div[data-baseweb="select"] > div,
-        div[data-baseweb="textarea"] > div {
-            background:
-                linear-gradient(180deg, rgba(50, 33, 80, 0.9), rgba(35, 23, 58, 0.9)) !important;
-            border: 1px solid rgba(216, 180, 254, 0.14) !important;
-            border-radius: 16px !important;
-            color: var(--blast-text) !important;
-            min-height: 58px !important;
-            box-shadow: none !important;
-            overflow: visible !important;
-            display: flex !important;
-            align-items: center !important;
-            margin: 0 !important;
-        }
-
-        div[data-baseweb="input"] > div:hover,
-        div[data-baseweb="select"] > div:hover,
-        div[data-baseweb="textarea"] > div:hover {
-            background:
-                linear-gradient(180deg, rgba(57, 37, 91, 0.94), rgba(40, 27, 67, 0.94)) !important;
-            border-color: rgba(216, 180, 254, 0.2) !important;
-        }
-
-        div[data-baseweb="select"] > div,
-        div[data-baseweb="input"] > div[data-testid="stDateInputField"],
-        div[data-baseweb="input"] > div[data-testid="stNumberInputField"] {
-            background:
-                linear-gradient(180deg, rgba(50, 33, 80, 0.9), rgba(35, 23, 58, 0.9)) !important;
-        }
-
-        div[data-testid="stTextInput"] > div,
-        div[data-testid="stNumberInput"] > div,
-        div[data-testid="stDateInput"] > div,
-        div[data-testid="stSelectbox"] > div,
-        div[data-testid="stTextArea"] > div {
-            background: transparent !important;
-            border: none !important;
-            box-shadow: none !important;
-            padding: 0 !important;
-            margin: 0 !important;
-        }
-
-        div[data-testid="stDateInput"] [data-baseweb="input"],
-        div[data-testid="stDateInput"] [data-baseweb="input"] > div,
-        div[data-testid="stDateInput"] [data-baseweb="base-input"] {
-            background:
-                linear-gradient(180deg, rgba(50, 33, 80, 0.9), rgba(35, 23, 58, 0.9)) !important;
-            border: 1px solid rgba(216, 180, 254, 0.14) !important;
-            border-radius: 16px !important;
-            box-shadow: none !important;
-        }
-
-        div[data-testid="stDateInput"] button {
-            background: transparent !important;
-            border: none !important;
-            box-shadow: none !important;
-            color: var(--blast-muted) !important;
-            padding-right: 0.55rem !important;
-        }
-
-        div[data-testid="stDateInput"] svg {
-            fill: var(--blast-muted) !important;
-        }
-
-        div[data-baseweb="input"] > div::before,
-        div[data-baseweb="input"] > div::after,
-        div[data-baseweb="select"] > div::before,
-        div[data-baseweb="select"] > div::after,
-        div[data-baseweb="textarea"] > div::before,
-        div[data-baseweb="textarea"] > div::after {
-            display: none !important;
-            border: none !important;
-            box-shadow: none !important;
-        }
-
-        input,
-        textarea,
-        div[data-baseweb="select"] input {
-            color: var(--blast-text) !important;
-            background: transparent !important;
-            border: none !important;
-            box-shadow: none !important;
-            line-height: 1 !important;
-            padding-top: 0.76rem !important;
-            padding-bottom: 0.76rem !important;
-            margin: 0 !important;
-        }
-
-        div[data-testid="stNumberInput"] input {
-            color: var(--blast-text) !important;
-            background: transparent !important;
-        }
-
-        div[data-testid="stTextInput"] input,
-        div[data-testid="stNumberInput"] input,
-        div[data-testid="stDateInput"] input,
-        div[data-testid="stSelectbox"] input {
-            min-height: 1.35rem !important;
-            transform: translateY(-3px);
-        }
-
-        div[data-testid="stTextArea"] textarea {
-            background: transparent !important;
-            min-height: 170px !important;
-            padding-top: 0.8rem !important;
-            padding-bottom: 0.8rem !important;
-        }
-
-        input::placeholder,
-        textarea::placeholder {
-            color: rgba(214, 196, 240, 0.8) !important;
-            opacity: 1 !important;
-        }
-
-        div[data-testid="stSelectbox"] label,
-        div[data-testid="stTextInput"] label,
-        div[data-testid="stTextArea"] label,
-        div[data-testid="stDateInput"] label,
-        div[data-testid="stNumberInput"] label,
-        div[data-testid="stCheckbox"] label {
-            color: var(--blast-text) !important;
-            font-weight: 600 !important;
-        }
-
-        button[kind="primary"] {
-            background: linear-gradient(135deg, #7c3aed, #8b5cf6 55%, #6d28d9) !important;
-            border: none !important;
-            border-radius: 16px !important;
-            color: white !important;
-            font-weight: 800 !important;
-            box-shadow: 0 16px 34px rgba(168, 85, 247, 0.28) !important;
-        }
-
-        button[kind="secondary"] {
-            border-radius: 14px !important;
-        }
-
-        div[data-testid="stFormSubmitButton"] {
-            background: transparent !important;
-            border: none !important;
-            box-shadow: none !important;
-            padding-top: 0.4rem !important;
-        }
-
-        div[data-testid="stFormSubmitButton"] > div {
-            background:
-                linear-gradient(180deg, rgba(40, 27, 67, 0.72), rgba(24, 18, 40, 0.32)) !important;
-            border: 1px solid rgba(196, 181, 253, 0.1) !important;
-            border-radius: 20px !important;
-            padding: 0.75rem !important;
-            box-shadow: none !important;
-        }
-
-        div[data-testid="stExpander"] {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(216, 180, 254, 0.12);
-            border-radius: 18px;
-        }
-
-        .dion-form-section {
-            margin-bottom: 1.5rem;
-            padding-bottom: 1.35rem;
-            border-bottom: 1px solid rgba(216, 180, 254, 0.10);
-        }
-
-        .dion-form-section:last-of-type {
-            border-bottom: none;
-            padding-bottom: 0;
-        }
-
-        .dion-form-section h3 {
-            margin-bottom: 0.95rem !important;
-        }
-
-        .dion-form-subtle {
-            color: var(--blast-muted);
-            font-size: 0.98rem;
-            margin-bottom: 1rem;
-        }
-
-        div[data-testid="stForm"] .stColumn {
-            gap: 1.15rem;
-        }
-
-        .dion-output-shell {
-            min-height: 780px;
-        }
-
-        .dion-output-empty {
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            min-height: 440px;
-        }
-
-    </style>
-    """,
-    unsafe_allow_html = True,
-)
+st.markdown(DION_CSS, unsafe_allow_html = True)
 
 TIME_PREF_OPTIONS = {
     'No preference': 'no preferences',
@@ -476,139 +52,6 @@ PLANNING_MODE_OPTIONS = {
 GROUP_SIZE_OPTIONS = list(range(1, 16))
 SIGHTSEEING_MODE_OPTIONS = ['No preference', 'Indoor', 'Outdoor', 'Mixed']
 MAX_FREE_TEXT_CHARS = 220
-UI_TEXT = {
-    'en': {
-        'execution': 'Execution',
-        'building_plan': 'Dion is building the plan',
-        'preparing_context': 'Preparing planner context...',
-        'collecting_items': 'Collecting events and places...',
-        'composing_itinerary': 'Composing the itinerary...',
-        'saving_report': 'Saving report...',
-        'plan_created': 'Plan and report created successfully.',
-        'planner_failed': 'The planner run failed. Review the current MCP and agent setup.',
-        'recommendation_heading': "Dion's Recommendation",
-        'result_block': 'Result Block',
-        'awaiting_output': 'Awaiting Output',
-        'no_plan_title': 'No plan generated yet',
-        'no_plan_body': 'Define the trip, submit the planner form, and Dion will populate the result view here.',
-        'traveler': 'Traveler',
-        'city': 'City',
-        'dates': 'Dates',
-        'group': 'Group',
-        'events': 'Events',
-        'sightseeing': 'Sightseeing',
-        'food_drinks': 'Food & Drinks',
-        'selected_events': 'Selected Events',
-        'city_highlights': 'City Highlights',
-        'trip_flow': 'Trip Flow',
-        'warnings': 'Warnings',
-        'personal_note': "Dion's Personal Note",
-        'report_preview': 'Report Preview',
-        'show_report_data': 'Show structured report data',
-        'show_request_data': 'Show structured request',
-        'show_core_result': 'Show structured core result',
-        'no_events_found': 'No verified events were found.',
-        'no_sightseeing_found': 'No verified sightseeing spots were found.',
-        'no_food_found': 'No verified food & drink recommendations were found.',
-        'no_itinerary': 'No itinerary overview available.',
-        'time': 'Time',
-        'venue': 'Venue',
-        'price': 'Price',
-        'entry': 'Entry',
-        'opening_hours': 'Opening hours',
-        'open_source': 'Open source',
-        'open_ticket_page': 'Open ticket page',
-        'open_stop_source': 'Open stop source',
-        'link_unverified': 'Public link could not be verified.',
-        'reference': 'Reference',
-        'time_unknown': 'Time unknown',
-        'unknown_day': 'Unknown day',
-        'followup': 'Follow-up',
-        'refine_plan': 'Refine the plan',
-        'followup_body': 'Ask Dion to revise the current plan instead of creating a new one from scratch.',
-        'followup_constraints_note': 'Current form filters still apply during follow-up updates. Change them above if you want to relax a constraint.',
-        'followup_prompt': 'What should Dion adjust?',
-        'followup_placeholder': 'e.g. Make Friday more elegant, reduce sightseeing, and add a stronger bar recommendation.',
-        'update_plan': 'Update current plan',
-        'followup_required': 'Please enter a follow-up request first.',
-        'followup_or_form_required': 'Please enter a follow-up request or change the planning selections first.',
-        'revising_plan': 'Dion is revising the current plan...',
-        'saving_updated_report': 'Saving updated report...',
-        'plan_updated': 'Plan updated successfully.',
-        'update_failed': 'Updating the plan failed. Review the current setup.',
-        'new_planning_run': 'New Planning Run',
-        'start_from_scratch': 'Start from scratch',
-        'reset_body': 'Discard the current planning session and open a fresh planning form for a completely new trip brief.',
-        'reset_button': 'Reset Dion and create a new plan',
-        'recommendation_preview': 'Recommendation',
-    },
-    'de': {
-        'execution': 'Ausführung',
-        'building_plan': 'Dion erstellt gerade den Plan',
-        'preparing_context': 'Planungskontext wird vorbereitet...',
-        'collecting_items': 'Events und Orte werden gesammelt...',
-        'composing_itinerary': 'Reiseplan wird zusammengestellt...',
-        'saving_report': 'Bericht wird gespeichert...',
-        'plan_created': 'Plan und Bericht wurden erfolgreich erstellt.',
-        'planner_failed': 'Der Planungslauf ist fehlgeschlagen. Bitte prüfe die aktuelle MCP- und Agent-Konfiguration.',
-        'recommendation_heading': 'Dions Empfehlung',
-        'result_block': 'Ergebnis',
-        'awaiting_output': 'Warten auf Ausgabe',
-        'no_plan_title': 'Noch kein Plan erstellt',
-        'no_plan_body': 'Lege die Reise fest und sende das Formular ab. Dion füllt dann hier die Ergebnisansicht.',
-        'traveler': 'Reisende Person',
-        'city': 'Stadt',
-        'dates': 'Daten',
-        'group': 'Gruppe',
-        'events': 'Events',
-        'sightseeing': 'Sightseeing',
-        'food_drinks': 'Essen & Drinks',
-        'selected_events': 'Ausgewählte Events',
-        'city_highlights': 'Stadt-Highlights',
-        'trip_flow': 'Reiseverlauf',
-        'warnings': 'Hinweise',
-        'personal_note': 'Dions persönliche Notiz',
-        'report_preview': 'Berichtsvorschau',
-        'show_report_data': 'Strukturierte Berichtsdaten anzeigen',
-        'show_request_data': 'Strukturierte Anfrage anzeigen',
-        'show_core_result': 'Strukturiertes Kernergebnis anzeigen',
-        'no_events_found': 'Es wurden keine verifizierten Events gefunden.',
-        'no_sightseeing_found': 'Es wurden keine verifizierten Sightseeing-Orte gefunden.',
-        'no_food_found': 'Es wurden keine verifizierten Essen- und Drink-Empfehlungen gefunden.',
-        'no_itinerary': 'Keine Itinerary-Übersicht verfügbar.',
-        'time': 'Uhrzeit',
-        'venue': 'Ort',
-        'price': 'Preis',
-        'entry': 'Eintritt',
-        'opening_hours': 'Öffnungszeiten',
-        'open_source': 'Quelle öffnen',
-        'open_ticket_page': 'Ticketseite öffnen',
-        'open_stop_source': 'Stopp-Quelle öffnen',
-        'link_unverified': 'Der öffentliche Link konnte nicht verifiziert werden.',
-        'reference': 'Referenz',
-        'time_unknown': 'Uhrzeit unbekannt',
-        'unknown_day': 'Unbekannter Tag',
-        'followup': 'Follow-up',
-        'refine_plan': 'Plan anpassen',
-        'followup_body': 'Bitte Dion, den aktuellen Plan gezielt zu überarbeiten statt einen komplett neuen zu erstellen.',
-        'followup_constraints_note': 'Die aktuellen Formularfilter gelten auch bei Follow-up-Updates weiter. Ändere sie oben, wenn du eine Einschränkung lockern möchtest.',
-        'followup_prompt': 'Was soll Dion anpassen?',
-        'followup_placeholder': 'z. B. Mach den Freitag eleganter, reduziere Sightseeing und ergänze eine stärkere Bar-Empfehlung.',
-        'update_plan': 'Aktuellen Plan aktualisieren',
-        'followup_required': 'Bitte gib zuerst einen Follow-up-Wunsch ein.',
-        'followup_or_form_required': 'Bitte gib einen Follow-up-Wunsch ein oder ändere zuerst die Planungsauswahl.',
-        'revising_plan': 'Dion überarbeitet gerade den aktuellen Plan...',
-        'saving_updated_report': 'Aktualisierter Bericht wird gespeichert...',
-        'plan_updated': 'Plan wurde erfolgreich aktualisiert.',
-        'update_failed': 'Die Aktualisierung des Plans ist fehlgeschlagen. Bitte prüfe das aktuelle Setup.',
-        'new_planning_run': 'Neuer Planlauf',
-        'start_from_scratch': 'Komplett neu starten',
-        'reset_body': 'Verwirf die aktuelle Planungssitzung und öffne ein frisches Formular für einen komplett neuen Plan.',
-        'reset_button': 'Dion zurücksetzen und neuen Plan erstellen',
-        'recommendation_preview': 'Empfehlung',
-    },
-}
-
 
 def _format_trip_date(value: date | str | None) -> str:
     if value is None:
@@ -1150,11 +593,11 @@ def render_form(
         if not submitted:
             return None
 
-    if has_existing_plan:
-        min_budget_value = None if min_budget == 0 else int(min_budget)
-        max_budget_value = None if max_budget == 0 else int(max_budget)
+    min_budget_value = None if min_budget == 0 else int(min_budget)
+    max_budget_value = None if max_budget == 0 else int(max_budget)
 
-        updated_request = build_user_request(
+    try:
+        current_request = build_user_request(
             user_name = user_name,
             city = city,
             country = country,
@@ -1177,22 +620,23 @@ def render_form(
             sightseeing_free_only = sightseeing_free_only,
             must_avoid_raw = must_avoid_raw,
             language_label = language_label,
-            user_notes = '',
+            user_notes = '' if has_existing_plan else user_notes,
         )
+    except Exception as exc:
+        st.session_state['last_error'] = str(exc)
+        return None
 
+    if has_existing_plan:
         normalized_followup_text = followup_text.strip()
-        request_changed = updated_request.model_dump(mode = 'json') != existing_request.model_dump(mode = 'json')
+        request_changed = current_request.model_dump(mode = 'json') != existing_request.model_dump(mode = 'json')
 
         if not normalized_followup_text and not request_changed:
             st.warning(_t('followup_or_form_required', existing_request))
             return None
 
         effective_followup_text = normalized_followup_text or _build_form_change_followup_message()
-        run_followup_update(updated_request, st.session_state['last_core_result'], effective_followup_text)
+        run_followup_update(current_request, st.session_state['last_core_result'], effective_followup_text)
         return None
-
-    min_budget_value = None if min_budget == 0 else int(min_budget)
-    max_budget_value = None if max_budget == 0 else int(max_budget)
 
     validation_errors = validate_required_inputs(
         city = city,
@@ -1210,35 +654,14 @@ def render_form(
             st.error(error)
         return None
 
-    try:
-        return build_user_request(
-            user_name = user_name,
-            city = city,
-            country = country,
-            date_start = date_start,
-            date_end = date_end,
-            include_last_day = include_last_day,
-            planning_mode = planning_mode,
-            events_enabled = events_enabled,
-            sightseeing_enabled = sightseeing_enabled,
-            food_drink_enabled = food_drink_enabled,
-            group_size = int(group_size),
-            min_budget = min_budget_value,
-            max_budget = max_budget_value,
-            vibe = vibe,
-            categories = categories,
-            time_pref_label = time_pref_label,
-            free_only = free_only,
-            sightseeing_interests = sightseeing_interests,
-            sightseeing_mode = sightseeing_mode,
-            sightseeing_free_only = sightseeing_free_only,
-            must_avoid_raw = must_avoid_raw,
-            language_label = language_label,
-            user_notes = user_notes,
-        )
-    except Exception as exc:
-        st.session_state['last_error'] = str(exc)
-        return None
+    return current_request
+
+
+def _make_progress_callback(status_box, progress_bar):
+    def callback(percent: int, message: str):
+        progress_bar.progress(min(percent, 100))
+        status_box.info(message)
+    return callback
 
 
 def render_status_and_run(user_request: UserRequest) -> None:
@@ -1261,19 +684,9 @@ def render_status_and_run(user_request: UserRequest) -> None:
     progress_bar = st.progress(0)
 
     try:
-        status_box.info(_t('preparing_context', user_request))
-        progress_bar.progress(18)
+        on_progress = _make_progress_callback(status_box, progress_bar)
 
-        status_box.info(_t('collecting_items', user_request))
-        progress_bar.progress(44)
-
-        status_box.info(_t('composing_itinerary', user_request))
-        progress_bar.progress(76)
-
-        result = asyncio.run(run_full_planner_flow(user_request))
-
-        status_box.info(_t('saving_report', user_request))
-        progress_bar.progress(92)
+        result = asyncio.run(run_full_planner_flow(user_request, on_progress = on_progress))
 
         st.session_state['last_user_request'] = user_request
         st.session_state['last_core_result'] = result['core_result']
@@ -1295,19 +708,16 @@ def run_followup_update(user_request: UserRequest, core_result, followup_text: s
     progress_bar = st.progress(0)
 
     try:
-        status_box.info(_t('revising_plan', user_request))
-        progress_bar.progress(42)
+        on_progress = _make_progress_callback(status_box, progress_bar)
 
         result = asyncio.run(
             run_followup_planner_flow(
                 original_request = user_request,
                 current_plan = core_result,
                 followup_message = followup_text,
+                on_progress = on_progress,
             )
         )
-
-        status_box.info(_t('saving_updated_report', user_request))
-        progress_bar.progress(86)
 
         st.session_state['last_core_result'] = result['core_result']
         st.session_state['last_ui_result'] = result['ui_result']
@@ -1557,10 +967,6 @@ def _render_day_overview(day, user_request: UserRequest | None = None) -> None:
                 st.caption(_t('link_unverified', user_request))
 
 
-def render_followup_section() -> None:
-    return
-
-
 def render_reset_section() -> None:
     user_request = st.session_state.get('last_user_request')
     if not st.session_state.get('last_core_result'):
@@ -1608,7 +1014,6 @@ def main() -> None:
         user_request = render_form(scope_events, scope_sightseeing, scope_food)
         if user_request is not None:
             render_status_and_run(user_request)
-        render_followup_section()
         render_reset_section()
 
     with right_col:

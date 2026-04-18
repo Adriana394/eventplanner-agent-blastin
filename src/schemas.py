@@ -10,24 +10,13 @@ class PlanningMode(str, Enum):
     full_trip = 'full_trip'
     event_day_trip = 'event_day_trip'
 
-# class BudgetLevel(str, Enum):
-#     low = 'low'
-#     medium = 'medium'
-#     high = 'high'
-    
-     
+
 class TimePreferences(str, Enum):
     daytime = 'daytime'
     evening = 'evening'
     night = 'night'
     any = 'no preferences'
-    
-    
-# class MobilityMode(str, Enum):
-#     walk = 'walk'
-#     public_transport = 'public transport'
-#     car = 'car'
-#     any = 'no preferences'
+
 
 
 class Language(str, Enum):
@@ -43,8 +32,6 @@ class Budget(BaseModel):
     """ Budget Model.
     User can use budget_level or min/max amounts
     """
-    #currency: str = Field(default = 'EUR', description = 'Currency code ')
-    #budget_level : Optional[BudgetLevel] = Field(default = None, description = 'Budget tier, e.g. low, medium, high.')
     min_budget : Optional[float] = Field(default = None, description = 'Minimum budget amount.')
     max_budget : Optional[float] = Field(default = None, description = 'Maximum budget amount.')
     
@@ -109,7 +96,7 @@ class DeliveryOption(BaseModel):
 class SightseeingPreferences(BaseModel):
     interests: Optional[str] = Field(default = None, description= 'Desired sightseeing interests, e.g. landmarks, viewpoints, history.')
     indoor_outdoor: Optional[str] = Field(default = None, description= ' Indoor, Outdoor, or mixed preferences.')
-    free_only: bool = Field(default = None, description= ' If ture prefer free sightseeing spots.')
+    free_only: bool = Field(default = None, description= ' If true, prefer free sightseeing spots.')
 
 
 class UserRequest(BaseModel):
@@ -248,7 +235,7 @@ class MarkdownReport(BaseModel):
 
 class ReporterResult(BaseModel):
     markdown_report: MarkdownReport
-    saved_report_path: str = Field(description = 'Absolute path where the markdown report was saved.')
+    saved_report_path: Optional[str] = Field(default = None, description = 'Absolute path where the markdown report was saved. May be null when the system handles persistence.')
 
 
 class ValidationIssue(BaseModel):
