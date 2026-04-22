@@ -513,6 +513,44 @@ def _is_generic_itinerary_stop(stop) -> bool:
     return any(re.search(pattern, combined_text) for pattern in GENERIC_ITINERARY_PATTERNS)
 
 
+def _deduplicate_food_stops_in_itinerary(core_result: CoreResult) -> CoreResult:
+    """Remove food itinerary stops whose venue has already appeared earlier in the trip.
+
+    If the same food/drink venue appears more than once across days (or twice within the same
+    day), only the first occurrence is kept. A warning is added so the user knows the result
+    had repeated venues.
+    """
+    seen: set[str] = set()
+    duplicates_removed: list[str] = []
+
+    for day in core_result.itinerary:
+        kept: list = []
+        for stop in day.stops:
+            if stop.stop_type != 'food':
+                kept.append(stop)
+                continue
+
+            key = _normalize_name_key(stop.linked_item_name or stop.title)
+            if key and key in seen:
+                duplicates_removed.append(stop.linked_item_name or stop.title)
+            else:
+                if key:
+                    seen.add(key)
+                kept.append(stop)
+        day.stops = kept
+
+    if duplicates_removed:
+        unique_dups = list(dict.fromkeys(duplicates_removed))
+        preview = ', '.join(unique_dups[:4])
+        extra = f' (+{len(unique_dups) - 4} more)' if len(unique_dups) > 4 else ''
+        core_result.warnings.append(
+            f'Duplicate food/drink venue(s) removed from itinerary: {preview}{extra}. '
+            'The agent reused the same venue on multiple days — consider varying meals manually.'
+        )
+
+    return core_result
+
+
 def _sanitize_itinerary_placeholders(core_result: CoreResult) -> CoreResult:
     removed_stop_count = 0
 
@@ -1300,6 +1338,7 @@ async def _apply_post_processing_pipeline(
 ) -> CoreResult:
     core_result = _sync_core_result_events_with_authoritative_data(core_result, authoritative_events)
     core_result = _sanitize_itinerary_placeholders(core_result)
+    core_result = _deduplicate_food_stops_in_itinerary(core_result)
     core_result = _insert_default_food_structure(user_request, core_result)
     core_result = _sanitize_event_source_urls(core_result)
     core_result = _sanitize_sightseeing_source_urls(core_result)

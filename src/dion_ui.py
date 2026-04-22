@@ -34,9 +34,9 @@ st.markdown(DION_CSS, unsafe_allow_html = True)
 
 TIME_PREF_OPTIONS = {
     'No preference': 'no preferences',
-    'Daytime': 'daytime',
-    'Evening': 'evening',
-    'Night': 'night',
+    'Daytime (10:00–17:00)': 'daytime',
+    'Evening (17:00–22:00)': 'evening',
+    'Night (from 22:00)': 'night',
 }
 
 LANGUAGE_OPTIONS = {

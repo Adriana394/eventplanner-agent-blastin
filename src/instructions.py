@@ -85,6 +85,12 @@ Planning & quality rules:
   - Prefer returning no event over returning a clearly mismatched event.
   - Example: if the user asks for nightlife, clubbing, techno, electro or house, do not recommend musicals, theater, family entertainment or generic stage shows as top matches.
   - If the user prefers evening or night, daytime-focused events should only appear when they are exceptionally relevant and explicitly justified.
+  - Time preference definitions (Europe/Berlin local time):
+    - daytime: events starting between 10:00 and 17:00
+    - evening: events starting between 17:00 and 22:00
+    - night: events starting at 22:00 or later
+    - no preferences: any start time is acceptable
+  - Apply these ranges when filtering and ranking events by time_pref.
   - Treat explicit user dislikes and exclusions as hard constraints.
   - If the request says things like "no family spots", "no musicals", "no theater", "only club/disco", or similar, exclude those categories completely from the selected events.
   - When event results are ambiguous, compare the title, description, category tags, venue context and event timing against the user request before keeping them.
@@ -116,13 +122,29 @@ Planning & quality rules:
     - breakfast or cafe stop in the morning before daytime exploration
     - flexible lunch or cafe/restaurant break around midday
     - dinner-oriented restaurant stop before the main evening program
+  - Do NOT reuse the same food or drink venue more than once anywhere in the itinerary —
+    not across days and not within the same day.
+    Before writing the itinerary, count your distinct food venues. You need at least:
+      - 1 distinct breakfast/cafe venue per trip day
+      - 1 distinct lunch venue per trip day
+      - 1 distinct dinner/bar venue per trip day
+    All of these must be different places. If you do not have enough, make additional DZT
+    calls using different search terms (e.g. 'brunch', 'bistro', 'wine bar', 'cafe',
+    'restaurant') before building the itinerary.
   - Every sightseeing stop in the itinerary must correspond to a concrete verified item in sightseeing_spots.
   - Every food stop in the itinerary must correspond to a concrete verified item in food_and_drink_spots.
   - Do not include generic placeholders such as 'Dinner in a fine restaurant', 'Visit historic places', or 'Enjoy drinks at a bar'.
   - If a concrete place cannot be verified, omit it and add a warning instead.
-  - If sightseeing.free_only = true and there are too few verified free sightseeing options, do not silently add paid spots.
-  - In that case, keep the actual plan strict and prefer fewer free sightseeing spots.
-  - If helpful, mention low-cost paid alternatives only in personal_feedback, clearly labeled as optional suggestions outside the actual plan.
+  - For sightseeing, you MUST make at least 2 separate DZT calls using different search terms
+    (e.g. first 'landmarks viewpoints', then 'parks museums neighborhoods') before building
+    the itinerary. One call is never enough for a multi-day trip.
+    Aim for at least 5 distinct verified sightseeing spots total before planning the days.
+  - If sightseeing.free_only = true and there are too few verified free sightseeing options,
+    include low-cost paid alternatives in sightseeing_spots and the itinerary to fill the gap.
+    Mark them clearly in the itinerary stop's notes field, e.g. "Not free (approx. 12 EUR) — optional tip."
+  - Add a warning in CoreResult.warnings listing which paid alternatives were included,
+    so the user knows the strict free_only filter could not be fully met.
+  - Keep free spots as the primary selections; paid alternatives come after them.
   - personal_feedback must be clearly separated from the plan itself and must not contradict the user's required filters.
   - In the recommendation, briefly explain why the selected events and spots fit the user's vibe, timing and budget
 
@@ -205,6 +227,9 @@ Rules:
 - Treat middle full-trip days that only start in the late afternoon or evening as problematic when daytime planning is enabled.
 - Flag malformed or unreliable non-Eventim place links when they appear in the plan.
 - Prefer fewer high-signal issues over many weak guesses.
+- Do not flag paid sightseeing spots as a free_only violation when they are explicitly
+  labeled as optional alternatives in the itinerary stop notes (e.g. "Not free — optional tip").
+  This is expected behavior when not enough free options exist.
 - If the plan is consistent enough, return needs_revision = false and an empty issues list.
 
 Output contract:

@@ -1,106 +1,167 @@
-# eventplanner-agent
+# Dion — AI Event & City Trip Planner
 
-`eventplanner-agent` is an agent-driven event and city-trip planner built around structured schemas, MCP tools, and a multi-step validation flow.
+Dion is an AI-powered event and city trip planner built for BlastIn. Given a city, date range, and personal preferences, Dion finds real events, sightseeing spots, and food & drink recommendations, then builds a coherent day-by-day itinerary and a markdown trip report.
 
-The project currently uses a Streamlit frontend in [src/dion_ui.py](/home/adri/projects/eventplanner-agent/src/dion_ui.py:1), while the core logic lives in Python orchestration code under [src/event_client.py](/home/adri/projects/eventplanner-agent/src/event_client.py:1).
+---
 
-## What It Does
+## Features
 
-The runtime flow is:
+- **Event discovery** via Eventim (concerts, clubs, shows, festivals)
+- **Sightseeing & food** via DZT (landmarks, restaurants, bars, cafes)
+- **Day-by-day itinerary** that respects timing, budget, and personal vibe
+- **Validation loop** — a second agent reviews the plan before it reaches the user
+- **Follow-up revisions** — refine an existing plan without starting from scratch
+- **Markdown report** generated and saved automatically
+- **Bilingual** — full EN and DE support throughout the UI and reports
+- **OpenAI and OpenRouter** model provider support
 
-1. Build a structured `UserRequest`
-2. Run `Dion_Planner` to create a `CoreResult`
-3. Run deterministic validation plus `Dion_Validator`
-4. Repair the plan through agent feedback when issues are found
-5. Convert the validated result into UI output
-6. Run `Dion_Reporter` to generate and save a markdown report
+---
 
-The planner can combine:
+## Prerequisites
 
-- events
-- sightseeing
-- food & drinks
-- day-by-day itinerary planning
-- follow-up revisions of an existing plan
+- Python 3.12+
+- [uv](https://docs.astral.sh/uv/) (package manager)
+- A `.env` file with the required API keys (see [Configuration](#configuration))
 
-## Key Features
+---
 
-- OpenAI and OpenRouter model provider support via `.env`
-- separate planner, reporter, and validator model selection
-- Eventim-backed event enrichment
-- DZT-backed place discovery
-- validator-driven repair loop instead of silent post-processing only
-- final-day itinerary control through `include_last_day`
-- browser-validated place-link handling that keeps places even when public links cannot be confirmed
-- itinerary/source-url resync so final verified link state also propagates into itinerary stops
-- follow-up revisions from the same planning form, with current filters kept as active constraints
-- markdown report generation with trip framing, rationale, and tradeoff notes
+## Getting Started
 
-## Main Files
+**1. Clone the repository**
 
-- [src/dion_ui.py](/home/adri/projects/eventplanner-agent/src/dion_ui.py:1): current Streamlit UI
-- [src/event_client.py](/home/adri/projects/eventplanner-agent/src/event_client.py:1): orchestration, validation loop, agent runs
-- [src/schemas.py](/home/adri/projects/eventplanner-agent/src/schemas.py:1): shared request/result contracts
-- [src/instructions.py](/home/adri/projects/eventplanner-agent/src/instructions.py:1): planner, validator, and reporter instructions
-- [src/reporting.py](/home/adri/projects/eventplanner-agent/src/reporting.py:1): markdown report construction and persistence helpers
-- [mcp_servers/mcp_servers.py](/home/adri/projects/eventplanner-agent/mcp_servers/mcp_servers.py:1): MCP server configuration and lifecycle
-- [CURRENT_STATUS.md](/home/adri/projects/eventplanner-agent/CURRENT_STATUS.md:1): current implementation state
-- [DEMO_CASES.md](/home/adri/projects/eventplanner-agent/DEMO_CASES.md:1): planned demo and regression scenarios
+```bash
+git clone <repo-url>
+cd eventplanner-agent
+```
 
-## Configuration
+**2. Install dependencies**
 
-Model/provider selection is controlled through environment variables.
+```bash
+uv sync
+```
 
-Current relevant keys include:
+**3. Configure environment variables**
 
-- `MODEL_PROVIDER`
-- `OPENAI_API_KEY`
-- `OPENROUTER_API_KEY`
-- `OPENAI_PLANNER_MODEL`
-- `OPENAI_REPORTER_MODEL`
-- `OPENAI_VALIDATOR_MODEL`
-- `OPENROUTER_PLANNER_MODEL`
-- `OPENROUTER_REPORTER_MODEL`
-- `OPENROUTER_VALIDATOR_MODEL`
-- `CITY_URL`
-- `EVENT_URL`
-- `REPORTS_DIR`
+Copy the example or create a `.env` file in the project root:
 
-For OpenRouter, the validator currently defaults to `openai/gpt-oss-120b:free` unless overridden.
+```bash
+cp .env.example .env   # if an example exists, otherwise create manually
+```
 
-## Running The App
+Minimum required variables:
 
-The project is managed with `uv`.
+```env
+MODEL_PROVIDER=openai          # or openrouter
+OPENAI_API_KEY=sk-...
+CITY_URL=<eventim-city-endpoint>
+EVENT_URL=<eventim-event-endpoint>
+```
 
-Example local run:
+See [Configuration](#configuration) for the full variable list.
+
+**4. Run the app**
 
 ```bash
 uv run streamlit run src/dion_ui.py
 ```
 
-The app is typically available at `http://localhost:8501`.
+The app is available at `http://localhost:8501`.
 
-For the additional Gradio variant:
+---
+
+## Running the Gradio UI (optional)
+
+A second UI implementation exists for testing and comparison:
 
 ```bash
 uv run python src/dion_gradio_ui.py
 ```
 
-This launches a second UI implementation for side-by-side comparison without removing or replacing the Streamlit app.
+This is a parallel alternative — it does not replace the Streamlit app.
 
-## Current Focus
+---
 
-The current focus is demo readiness, not a frontend rewrite. The system has recently been improved around:
+## Configuration
 
-- itinerary correctness
-- removal of generic filler stops
-- recommendation/data consistency
-- sightseeing and food/drink source handling
-- follow-up usability in Streamlit
-- markdown report messaging for places without verified public links
-- validator-driven repair
-- stronger report quality
+All sensitive values and model selections are controlled via `.env`.
 
-The currently tracked open issue list lives in [issues.md](/home/adri/projects/eventplanner-agent/issues.md:1).
+| Variable | Description |
+|----------|-------------|
+| `MODEL_PROVIDER` | `openai` or `openrouter` |
+| `OPENAI_API_KEY` | OpenAI API key |
+| `OPENROUTER_API_KEY` | OpenRouter API key |
+| `OPENAI_PLANNER_MODEL` | Model for the planner agent (OpenAI) |
+| `OPENAI_REPORTER_MODEL` | Model for the reporter agent (OpenAI) |
+| `OPENAI_VALIDATOR_MODEL` | Model for the validator agent (OpenAI) |
+| `OPENROUTER_PLANNER_MODEL` | Model for the planner agent (OpenRouter) |
+| `OPENROUTER_REPORTER_MODEL` | Model for the reporter agent (OpenRouter) |
+| `OPENROUTER_VALIDATOR_MODEL` | Model for the validator agent (OpenRouter) |
+| `CITY_URL` | Eventim city lookup endpoint |
+| `EVENT_URL` | Eventim event fetch endpoint |
+| `REPORTS_DIR` | Output path for saved reports (default: `outputs/reports/`) |
 
-Use [CURRENT_STATUS.md](/home/adri/projects/eventplanner-agent/CURRENT_STATUS.md:1) for the latest status and [DEMO_CASES.md](/home/adri/projects/eventplanner-agent/DEMO_CASES.md:1) for the planned presentation scenarios.
+---
+
+## Project Structure
+
+```
+eventplanner-agent/
+├── src/
+│   ├── event_client.py        # Core orchestration, validation loop, agent runs
+│   ├── schemas.py             # All Pydantic data contracts (inputs + outputs)
+│   ├── instructions.py        # System prompts for all three agents
+│   ├── dion_ui.py             # Streamlit frontend
+│   ├── dion_styles.py         # UI CSS (extracted for readability)
+│   ├── dion_translations.py   # EN/DE UI text strings
+│   ├── dion_gradio_ui.py      # Alternative Gradio frontend
+│   └── reporting.py           # Markdown report construction and file persistence
+├── mcp_servers/
+│   ├── mcp_servers.py         # MCP server config and lifecycle management
+│   ├── event_server.py        # Eventim-facing MCP server
+│   └── dzt_server.py          # DZT-facing MCP server (places, sightseeing, food)
+├── outputs/
+│   └── reports/               # Generated markdown reports (runtime output)
+├── CODE_DOKUMENTATION.md             # Detailed codebase guide for new team members
+├── DEMO_CASES.md              # Test/demo scenarios with inputs and checklists
+├── IDEAS.md                   # Future feature ideas
+└── pyproject.toml             # Project metadata and dependencies
+```
+
+---
+
+## How It Works
+
+1. The user fills out the planning form in the UI
+2. The UI builds a structured `UserRequest` (city, dates, vibe, budget, scope flags)
+3. `Dion_Planner` searches for events (Eventim), sightseeing and food spots (DZT), and validates links (Playwright)
+4. A deterministic post-processing pipeline cleans and verifies the result
+5. `Dion_Validator` checks for constraint violations and inconsistencies
+6. If the plan needs revision, `Dion_Planner` receives a targeted repair prompt
+7. The final result is displayed in the UI and passed to `Dion_Reporter`
+8. `Dion_Reporter` generates a markdown report, saved to `outputs/reports/`
+
+For a deeper technical walkthrough, see [`CODE_DOKUMENTATION.md`](CODE_DOKUMENTATION.md).
+
+---
+
+## Testing
+
+Use the scenarios in [`DEMO_CASES.md`](DEMO_CASES.md) for manual end-to-end testing.
+Each case includes exact inputs, expected outcomes, and a checklist to verify.
+
+Quick import checks:
+
+```bash
+uv run python -c "from src.event_client import run_full_planner_flow; print('OK')"
+uv run python -c "from src.dion_ui import main; print('OK')"
+uv run python -c "from src.schemas import UserRequest; print('OK')"
+```
+
+---
+
+## Contributing
+
+- `src/schemas.py` is the shared contract — coordinate with the team before changing it
+- Agent behavior is controlled via `src/instructions.py`, not only Python code
+- New feature ideas go in `IDEAS.md` before being implemented
+- Run through the relevant demo cases after any change to `event_client.py` or `instructions.py`
