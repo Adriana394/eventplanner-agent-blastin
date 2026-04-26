@@ -2,6 +2,7 @@ UI_TEXT = {
     'en': {
         'execution': 'Execution',
         'building_plan': 'Dion is building the plan',
+        'revising_plan': 'Dion is revising the current plan...',
         'plan_created': 'Plan and report created successfully.',
         'planner_failed': 'The planner run failed. Review the current MCP and agent setup.',
         'recommendation_heading': "Dion's Recommendation",
@@ -61,6 +62,7 @@ UI_TEXT = {
     'de': {
         'execution': 'Ausführung',
         'building_plan': 'Dion erstellt gerade den Plan',
+        'revising_plan': 'Dion überarbeitet gerade den aktuellen Plan...',
         'plan_created': 'Plan und Bericht wurden erfolgreich erstellt.',
         'planner_failed': 'Der Planungslauf ist fehlgeschlagen. Bitte prüfe die aktuelle MCP- und Agent-Konfiguration.',
         'recommendation_heading': 'Dions Empfehlung',

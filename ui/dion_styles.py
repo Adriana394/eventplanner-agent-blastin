@@ -420,5 +420,73 @@ DION_CSS = """
         min-height: 440px;
     }
 
+    /* Result cards (st.container with border=True) */
+    [data-testid="stVerticalBlockBorderWrapper"] {
+        background: linear-gradient(180deg, rgba(34, 25, 54, 0.90), rgba(21, 16, 34, 0.90)) !important;
+        border: 1px solid rgba(196, 181, 253, 0.16) !important;
+        border-radius: 18px !important;
+        box-shadow: 0 12px 28px rgba(0, 0, 0, 0.20) !important;
+        margin-bottom: 0.5rem !important;
+    }
+
+    /* Link buttons */
+    [data-testid="stLinkButton"] a {
+        background: linear-gradient(135deg, #7c3aed, #8b5cf6 55%, #6d28d9) !important;
+        color: white !important;
+        border-radius: 12px !important;
+        font-weight: 700 !important;
+        border: none !important;
+        font-size: 0.88rem !important;
+        text-decoration: none !important;
+        box-shadow: 0 8px 18px rgba(139, 92, 246, 0.25) !important;
+    }
+
+    /* Progress bar */
+    .stProgress {
+        background: rgba(139, 92, 246, 0.12) !important;
+        border-radius: 999px !important;
+        height: 6px !important;
+        overflow: hidden !important;
+    }
+
+    .stProgress > div {
+        background: linear-gradient(90deg, #7c3aed, #a855f7) !important;
+        border-radius: 999px !important;
+    }
+
+    /* Metric values */
+    [data-testid="stMetricValue"] {
+        color: var(--blast-text) !important;
+        font-size: 2.1rem !important;
+        font-weight: 800 !important;
+        font-family: 'Manrope', sans-serif !important;
+    }
+
+    /* Status widget (st.status) */
+    [data-testid="stStatusWidget"] {
+        background: rgba(34, 25, 54, 0.92) !important;
+        border: 1px solid rgba(196, 181, 253, 0.16) !important;
+        border-radius: 20px !important;
+        box-shadow: 0 14px 32px rgba(0, 0, 0, 0.22) !important;
+    }
+
+    /* Alert boxes */
+    [data-testid="stAlert"] {
+        border-radius: 16px !important;
+        font-family: 'Manrope', sans-serif !important;
+    }
+
+    /* Result block section header (lightweight, no box) */
+    .dion-result-header {
+        margin-top: 1.3rem;
+        margin-bottom: 0.65rem;
+        padding-bottom: 0.55rem;
+        border-bottom: 1px solid rgba(216, 180, 254, 0.12);
+    }
+
+    .dion-result-header h3 {
+        margin-bottom: 0 !important;
+    }
+
 </style>
 """

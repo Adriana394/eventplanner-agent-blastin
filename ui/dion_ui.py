@@ -14,8 +14,8 @@ if str(ROOT_DIR) not in sys.path:
 
 from src.schemas import UserRequest
 from src.event_client import run_full_planner_flow, run_followup_planner_flow
-from src.dion_styles import DION_CSS
-from src.dion_translations import UI_TEXT
+from ui.dion_styles import DION_CSS
+from ui.dion_translations import UI_TEXT
 
 
 load_dotenv(override = True)
@@ -657,82 +657,69 @@ def render_form(
     return current_request
 
 
-def _make_progress_callback(status_box, progress_bar):
-    def callback(percent: int, message: str):
-        progress_bar.progress(min(percent, 100))
-        status_box.info(message)
-    return callback
-
-
 def render_status_and_run(user_request: UserRequest) -> None:
-    st.markdown(
-        f"""
-        <div class='dion-panel'>
-            <div class='dion-soft-label'>{_t('execution', user_request)}</div>
-            <h2>{_t('building_plan', user_request)}</h2>
-        </div>
-        """,
-        unsafe_allow_html = True,
-    )
-
     st.session_state['last_core_result'] = None
     st.session_state['last_ui_result'] = None
     st.session_state['last_markdown_report'] = None
     st.session_state['last_error'] = None
 
-    status_box = st.empty()
-    progress_bar = st.progress(0)
+    with st.status(_t('building_plan', user_request), expanded = True) as run_status:
+        step_placeholder = st.empty()
 
-    try:
-        on_progress = _make_progress_callback(status_box, progress_bar)
+        def on_progress(percent: int, message: str) -> None:
+            step_placeholder.markdown(f'`{percent}%` — {message}')
 
-        result = asyncio.run(run_full_planner_flow(user_request, on_progress = on_progress))
+        try:
+            result = asyncio.run(run_full_planner_flow(user_request, on_progress = on_progress))
 
-        st.session_state['last_user_request'] = user_request
-        st.session_state['last_core_result'] = result['core_result']
-        st.session_state['last_ui_result'] = result['ui_result']
-        st.session_state['last_markdown_report'] = result['markdown_report']
-        st.session_state['last_error'] = None
+            st.session_state['last_user_request'] = user_request
+            st.session_state['last_core_result'] = result['core_result']
+            st.session_state['last_ui_result'] = result['ui_result']
+            st.session_state['last_markdown_report'] = result['markdown_report']
+            st.session_state['last_error'] = None
 
-        progress_bar.progress(100)
-        status_box.success(_t('plan_created', user_request))
-        st.rerun()
-    except Exception as exc:
-        traceback.print_exc()
-        st.session_state['last_error'] = str(exc)
-        status_box.error(_t('planner_failed', user_request))
+            run_status.update(label = _t('plan_created', user_request), state = 'complete', expanded = False)
+        except Exception as exc:
+            traceback.print_exc()
+            st.session_state['last_error'] = str(exc)
+            run_status.update(label = _t('planner_failed', user_request), state = 'error', expanded = True)
+            return
+
+    st.rerun()
 
 
 def run_followup_update(user_request: UserRequest, core_result, followup_text: str) -> None:
-    status_box = st.empty()
-    progress_bar = st.progress(0)
+    with st.status(_t('revising_plan', user_request), expanded = True) as run_status:
+        step_placeholder = st.empty()
 
-    try:
-        on_progress = _make_progress_callback(status_box, progress_bar)
+        def on_progress(percent: int, message: str) -> None:
+            step_placeholder.markdown(f'`{percent}%` — {message}')
 
-        result = asyncio.run(
-            run_followup_planner_flow(
-                original_request = user_request,
-                current_plan = core_result,
-                followup_message = followup_text,
-                on_progress = on_progress,
+        try:
+            result = asyncio.run(
+                run_followup_planner_flow(
+                    original_request = user_request,
+                    current_plan = core_result,
+                    followup_message = followup_text,
+                    on_progress = on_progress,
+                )
             )
-        )
 
-        st.session_state['last_core_result'] = result['core_result']
-        st.session_state['last_ui_result'] = result['ui_result']
-        st.session_state['last_markdown_report'] = result['markdown_report']
-        st.session_state['last_user_request'] = user_request
-        st.session_state['last_error'] = None
-        st.session_state['followup_text'] = ''
+            st.session_state['last_core_result'] = result['core_result']
+            st.session_state['last_ui_result'] = result['ui_result']
+            st.session_state['last_markdown_report'] = result['markdown_report']
+            st.session_state['last_user_request'] = user_request
+            st.session_state['last_error'] = None
+            st.session_state['followup_text'] = ''
 
-        progress_bar.progress(100)
-        status_box.success(_t('plan_updated', user_request))
-        st.rerun()
-    except Exception as exc:
-        traceback.print_exc()
-        st.session_state['last_error'] = str(exc)
-        status_box.error(_t('update_failed', user_request))
+            run_status.update(label = _t('plan_updated', user_request), state = 'complete', expanded = False)
+        except Exception as exc:
+            traceback.print_exc()
+            st.session_state['last_error'] = str(exc)
+            run_status.update(label = _t('update_failed', user_request), state = 'error', expanded = True)
+            return
+
+    st.rerun()
 
 
 def build_markdown_preview(markdown_report, max_sections: int = 3, max_chars: int = 1700) -> str:
@@ -755,12 +742,7 @@ def build_markdown_preview(markdown_report, max_sections: int = 3, max_chars: in
 
 def render_result_block(title: str, body_fn, user_request: UserRequest | None = None) -> None:
     st.markdown(
-        f"""
-        <div class='dion-panel'>
-            <div class='dion-soft-label'>{_t('result_block', user_request)}</div>
-            <h2>{title}</h2>
-        </div>
-        """,
+        f"<div class='dion-result-header'><span class='dion-soft-label'>{_t('result_block', user_request)}</span><h3>{title}</h3></div>",
         unsafe_allow_html = True,
     )
     body_fn()
