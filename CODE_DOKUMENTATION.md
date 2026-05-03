@@ -113,13 +113,13 @@ The system uses three specialized AI agents. Each has a strict role and cannot d
 ## End-to-End Flow
 
 ```
-User fills form
+User fills form (+ selects AI model from dropdown)
       │
       ▼
-UI builds UserRequest (src/dion_ui.py)
+UI builds UserRequest (ui/dion_gradio_ui.py)
       │
       ▼
-run_full_planner_flow() (src/event_client.py)
+run_full_planner_flow(user_request, planner_model=selected_model) (src/event_client.py)
       │
       ├─ 1. Start MCP servers (Playwright, filesystem, Eventim, DZT)
       │
@@ -164,14 +164,18 @@ run_full_planner_flow() (src/event_client.py)
 
 | File | Role |
 |------|------|
-| `event_client.py` | Core orchestration. Runs agents, manages MCP servers, post-processing, validation loop, report persistence. The most important file in the project. |
+| `event_client.py` | Core orchestration. Runs agents, manages MCP servers, post-processing, validation loop, report persistence. The most important file in the project. Also defines `AVAILABLE_MODELS` and `DEFAULT_MODEL` for the UI model selector. |
 | `schemas.py` | All Pydantic data contracts (inputs + outputs). The shared language between UI, agents, and code. |
 | `instructions.py` | System prompts for all three agents. Much of the product behavior lives here, not in Python. |
-| `dion_ui.py` | Streamlit frontend. Collects user input, builds `UserRequest`, triggers flows, renders results. |
-| `dion_styles.py` | CSS for the Streamlit UI (extracted to keep `dion_ui.py` focused on logic). |
-| `dion_translations.py` | EN/DE UI text strings (extracted to keep translations centralized). |
-| `dion_gradio_ui.py` | Alternative Gradio UI. Exists for side-by-side comparison during testing, not the primary frontend. |
 | `reporting.py` | Helpers for building the markdown report from structured data and saving it to disk. |
+
+### `ui/`
+
+| File | Role |
+|------|------|
+| `dion_gradio_ui.py` | Gradio frontend (primary UI). Collects user input, builds `UserRequest`, exposes the AI model selector, triggers flows, renders results. |
+| `dion_styles.py` | CSS for the Gradio UI (extracted to keep `dion_gradio_ui.py` focused on logic). |
+| `dion_translations.py` | EN/DE UI text strings (extracted to keep translations centralized). |
 
 ### `mcp_servers/`
 
@@ -279,6 +283,32 @@ Messages are bilingual (EN/DE) and derived from the user's language selection �
 
 ---
 
+## UI Model Selector
+
+The Gradio UI exposes a dropdown that lets the user choose which AI model `Dion_Planner` should use for the current request. The list of options and the default are defined as constants in `src/event_client.py`:
+
+```python
+AVAILABLE_MODELS = [
+    'qwen/qwen3.6-plus:free',            # default
+    'deepseek/deepseek-r1:free',
+    'nvidia/nemotron-3-super-120b-a12b:free',
+]
+DEFAULT_MODEL = AVAILABLE_MODELS[0]
+```
+
+**How it flows through the code:**
+
+1. `ui/dion_gradio_ui.py` renders a `gr.Dropdown` populated from `AVAILABLE_MODELS`
+2. The selected value is passed to `submit_planner()` as `selected_model`
+3. `submit_planner` forwards it as `planner_model=selected_model` to both `run_full_planner_flow` and `run_followup_planner_flow`
+4. Both flow functions already accept an optional `planner_model` parameter — if provided it overrides the value from `.env` / the hardcoded fallback
+
+`reporter_model` and `validator_model` are not affected and continue to use the `.env` configuration.
+
+To add or remove models, only `AVAILABLE_MODELS` in `src/event_client.py` needs to change — the UI picks up the list automatically at startup.
+
+---
+
 ## Configuration
 
 The runtime reads these values from environment variables, typically loaded from `.env`.
@@ -294,7 +324,7 @@ The runtime reads these values from environment variables, typically loaded from
 | `OPENAI_PLANNER_MODEL` | Model name for Dion_Planner (OpenAI) |
 | `OPENAI_REPORTER_MODEL` | Model name for Dion_Reporter (OpenAI) |
 | `OPENAI_VALIDATOR_MODEL` | Model name for Dion_Validator (OpenAI) |
-| `OPENROUTER_PLANNER_MODEL` | Model name for Dion_Planner (OpenRouter) |
+| `OPENROUTER_PLANNER_MODEL` | Default model name for Dion_Planner (OpenRouter) — overridden per request when the user selects a model in the UI |
 | `OPENROUTER_REPORTER_MODEL` | Model name for Dion_Reporter (OpenRouter) |
 | `OPENROUTER_VALIDATOR_MODEL` | Model name for Dion_Validator (OpenRouter) |
 | `PLANNER_MODEL` | Provider-agnostic fallback for the planner model |
@@ -319,5 +349,5 @@ For someone new to the project:
 3. `src/schemas.py` — learn the data contracts before touching any logic
 4. `src/instructions.py` — understand how agent behavior is controlled
 5. `src/event_client.py` — follow the runtime flow end to end
-6. `src/dion_ui.py` — see how the UI builds requests and renders results
+6. `ui/dion_gradio_ui.py` — see how the UI builds requests, renders results, and wires the model selector
 7. `mcp_servers/mcp_servers.py` + `event_server.py` + `dzt_server.py` — understand the tool layer

@@ -101,18 +101,18 @@ eventplanner-agent/
 │   ├── event_client.py        # Core orchestration, validation loop, agent runs
 │   ├── schemas.py             # All Pydantic data contracts (inputs + outputs)
 │   ├── instructions.py        # System prompts for all three agents
-│   ├── dion_ui.py             # Streamlit frontend
-│   ├── dion_styles.py         # UI CSS (extracted for readability)
-│   ├── dion_translations.py   # EN/DE UI text strings
-│   ├── dion_gradio_ui.py      # Alternative Gradio frontend
 │   └── reporting.py           # Markdown report construction and file persistence
+├── ui/
+│   ├── dion_gradio_ui.py      # Gradio frontend (primary UI)
+│   ├── dion_styles.py         # UI CSS (extracted for readability)
+│   └── dion_translations.py   # EN/DE UI text strings
 ├── mcp_servers/
 │   ├── mcp_servers.py         # MCP server config and lifecycle management
 │   ├── event_server.py        # Eventim-facing MCP server
 │   └── dzt_server.py          # DZT-facing MCP server (places, sightseeing, food)
 ├── outputs/
 │   └── reports/               # Generated markdown reports (runtime output)
-├── CODE_DOKUMENTATION.md             # Detailed codebase guide for new team members
+├── CODE_DOKUMENTATION.md      # Detailed codebase guide for new team members
 ├── DEMO_CASES.md              # Test/demo scenarios with inputs and checklists
 ├── IDEAS.md                   # Future feature ideas
 └── pyproject.toml             # Project metadata and dependencies
@@ -143,9 +143,9 @@ Each case includes exact inputs, expected outcomes, and a checklist to verify.
 Quick import checks:
 
 ```bash
-uv run python -c "from src.event_client import run_full_planner_flow; print('OK')"
-uv run python -c "from src.dion_ui import main; print('OK')"
+uv run python -c "from src.event_client import run_full_planner_flow, AVAILABLE_MODELS; print('OK')"
 uv run python -c "from src.schemas import UserRequest; print('OK')"
+uv run python -c "import ui.dion_gradio_ui; print('OK')"
 ```
 
 ---
@@ -154,5 +154,6 @@ uv run python -c "from src.schemas import UserRequest; print('OK')"
 
 - `src/schemas.py` is the shared contract — coordinate with the team before changing it
 - Agent behavior is controlled via `src/instructions.py`, not only Python code
+- Available UI models are defined in `AVAILABLE_MODELS` in `src/event_client.py` — update there to add or remove choices
 - New feature ideas go in `IDEAS.md` before being implemented
 - Run through the relevant demo cases after any change to `event_client.py` or `instructions.py`
