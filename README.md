@@ -14,6 +14,7 @@ Dion is an AI-powered event and city trip planner built for BlastIn. Given a cit
 - **Markdown report** generated and saved automatically
 - **Bilingual** — full EN and DE support throughout the UI and reports
 - **OpenAI and OpenRouter** model provider support
+- **UI model selector** — choose the planner AI model directly in the interface
 
 ---
 
@@ -62,22 +63,10 @@ See [Configuration](#configuration) for the full variable list.
 **4. Run the app**
 
 ```bash
-uv run streamlit run src/dion_ui.py
+uv run python ui/dion_gradio_ui.py
 ```
 
-The app is available at `http://localhost:8501`.
-
----
-
-## Running the Gradio UI (optional)
-
-A second UI implementation exists for testing and comparison:
-
-```bash
-uv run python src/dion_gradio_ui.py
-```
-
-This is a parallel alternative — it does not replace the Streamlit app.
+The app is available at `http://localhost:7860`.
 
 ---
 
@@ -93,12 +82,14 @@ All sensitive values and model selections are controlled via `.env`.
 | `OPENAI_PLANNER_MODEL` | Model for the planner agent (OpenAI) |
 | `OPENAI_REPORTER_MODEL` | Model for the reporter agent (OpenAI) |
 | `OPENAI_VALIDATOR_MODEL` | Model for the validator agent (OpenAI) |
-| `OPENROUTER_PLANNER_MODEL` | Model for the planner agent (OpenRouter) |
+| `OPENROUTER_PLANNER_MODEL` | Default planner model (OpenRouter) — can be overridden per request from the UI |
 | `OPENROUTER_REPORTER_MODEL` | Model for the reporter agent (OpenRouter) |
 | `OPENROUTER_VALIDATOR_MODEL` | Model for the validator agent (OpenRouter) |
 | `CITY_URL` | Eventim city lookup endpoint |
 | `EVENT_URL` | Eventim event fetch endpoint |
 | `REPORTS_DIR` | Output path for saved reports (default: `outputs/reports/`) |
+
+The UI exposes a model selector for the planner agent. Available choices and the default are defined in `AVAILABLE_MODELS` / `DEFAULT_MODEL` in `src/event_client.py`.
 
 ---
 

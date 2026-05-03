@@ -15,7 +15,7 @@ ROOT_DIR = Path(__file__).resolve().parent.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
-from src.event_client import run_followup_planner_flow, run_full_planner_flow
+from src.event_client import AVAILABLE_MODELS, DEFAULT_MODEL, run_followup_planner_flow, run_full_planner_flow
 from src.schemas import UserRequest
 
 
@@ -975,6 +975,7 @@ def submit_planner(
     language_label: str,
     user_notes: str,
     followup_text: str,
+    selected_model: str = DEFAULT_MODEL,
 ):
     state = dict(current_state or _default_state())
     state['last_error'] = None
@@ -1045,11 +1046,12 @@ def submit_planner(
                     original_request = user_request,
                     current_plan = state['last_core_result'],
                     followup_message = normalized_followup or _build_form_change_followup_message(),
+                    planner_model = selected_model or DEFAULT_MODEL,
                 )
             )
             success_message = _t('plan_updated', user_request)
         else:
-            result = _run_sync(run_full_planner_flow(user_request))
+            result = _run_sync(run_full_planner_flow(user_request, planner_model = selected_model or DEFAULT_MODEL))
             success_message = _t('plan_created', user_request)
 
         state['last_user_request'] = user_request
@@ -1236,6 +1238,7 @@ def build_app() -> gr.Blocks:
                             max_length = 320,
                         )
                     language = gr.Dropdown(label = 'Output language', choices = list(LANGUAGE_OPTIONS.keys()), value = 'English')
+                    model_selector = gr.Dropdown(label = 'AI model', choices = AVAILABLE_MODELS, value = DEFAULT_MODEL)
                     submit_button = gr.Button('Build plan with Dion', variant = 'primary')
                     reset_button = gr.Button(UI_TEXT['en']['reset_button'], visible = False)
 
@@ -1281,6 +1284,7 @@ def build_app() -> gr.Blocks:
             language,
             user_notes,
             followup_text,
+            model_selector,
         ]
         submit_outputs = [
             app_state,

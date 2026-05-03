@@ -79,6 +79,13 @@ EVENT_SERVICE_BASE_URL = os.getenv('EVENT_URL')
 OPENROUTER_BASE_URL = os.getenv('OPENROUTER_BASE_URL', 'https://openrouter.ai/api/v1')
 MODEL_PROVIDER_OPENAI = 'openai'
 MODEL_PROVIDER_OPENROUTER = 'openrouter'
+
+AVAILABLE_MODELS = [
+    'qwen/qwen3.6-plus:free',
+    'deepseek/deepseek-r1:free',
+    'nvidia/nemotron-3-super-120b-a12b:free',
+]
+DEFAULT_MODEL = AVAILABLE_MODELS[0]
 BERLIN_TZ = ZoneInfo('Europe/Berlin')
 EVENT_PRICE_INFO_NOTE = (
     'Eventim prices are synced once per day and may vary slightly later. '
