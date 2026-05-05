@@ -19,6 +19,8 @@ if str(ROOT_DIR) not in sys.path:
 
 load_dotenv(override=True)
 
+from agents.exceptions import ModelBehaviorError
+
 from src.event_client import AVAILABLE_MODELS, DEFAULT_MODEL, run_followup_planner_flow, run_full_planner_flow
 from src.schemas import CoreResult, UserRequest
 
@@ -202,6 +204,23 @@ def list_models():
     return {'models': AVAILABLE_MODELS, 'default': DEFAULT_MODEL}
 
 
+def _handle_error(exc: Exception) -> None:
+    msg = str(exc)
+    if isinstance(exc, ModelBehaviorError):
+        if 'Invalid JSON' in msg or 'invalid json' in msg.lower():
+            raise HTTPException(
+                status_code=422,
+                detail='The selected model generated an invalid tool call. Please try a different model.',
+            )
+        raise HTTPException(status_code=422, detail=f'Model error: {msg}')
+    if 'Provider returned error' in msg or 'is not supported' in msg:
+        raise HTTPException(
+            status_code=422,
+            detail=f'The model provider returned an error — this model may not be compatible: {msg}',
+        )
+    raise HTTPException(status_code=500, detail=msg)
+
+
 @app.post('/api/plan')
 def run_plan(body: PlanRequest):
     try:
@@ -213,8 +232,10 @@ def run_plan(body: PlanRequest):
             'plan': _serialize_result(user_request, result),
             'core_result_json': result['core_result'].model_dump(mode='json'),
         }
+    except HTTPException:
+        raise
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        _handle_error(exc)
 
 
 @app.post('/api/followup')
@@ -234,8 +255,10 @@ def run_followup(body: FollowupRequest):
             'plan': _serialize_result(user_request, result),
             'core_result_json': result['core_result'].model_dump(mode='json'),
         }
+    except HTTPException:
+        raise
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc))
+        _handle_error(exc)
 
 
 # Serve the HTML UI at /

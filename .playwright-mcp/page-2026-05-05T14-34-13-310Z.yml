@@ -1,0 +1,54 @@
+- generic [ref=e2]:
+  - navigation [ref=e3]:
+    - link "Über Google" [ref=e122] [cursor=pointer]:
+      - /url: https://about.google/?fg=1&utm_source=google-DE&utm_medium=referral&utm_campaign=hp-header
+    - link "Store" [ref=e123] [cursor=pointer]:
+      - /url: https://store.google.com/DE?utm_source=hp_header&utm_medium=google_ooo&utm_campaign=GS100042&hl=de-DE
+    - generic [ref=e7]:
+      - generic [ref=e8]:
+        - link "Gmail" [ref=e124] [cursor=pointer]:
+          - /url: https://mail.google.com/mail/&ogbl
+        - link "Nach Bildern suchen" [ref=e125] [cursor=pointer]:
+          - /url: https://www.google.com/imghp?hl=de&ogbl
+          - text: Bilder
+      - button "Google-Apps" [ref=e126] [cursor=pointer]:
+        - img [ref=e16]
+      - link "Anmelden" [ref=e127] [cursor=pointer]:
+        - /url: https://accounts.google.com/ServiceLogin?hl=de&passive=true&continue=https://www.google.com/&ec=futura_exp_og_so_72776762_e
+  - img "Google" [ref=e128]
+  - search [ref=e31]:
+    - generic [ref=e33]:
+      - generic [ref=e35]:
+        - img [ref=e39]
+        - combobox "Suche" [ref=e129]
+        - generic [ref=e44]:
+          - button "Sprachsuche" [ref=e130] [cursor=pointer]:
+            - img [ref=e46]
+          - button "Suche anhand von Bildern" [ref=e131] [cursor=pointer]:
+            - img [ref=e49]
+      - generic [ref=e52]:
+        - button "Google Suche" [ref=e132] [cursor=pointer]
+        - button "Auf gut Glück!" [ref=e133] [cursor=pointer]
+  - generic [ref=e57]:
+    - text: "Google gibt es auch auf:"
+    - link "English" [ref=e134] [cursor=pointer]:
+      - /url: https://www.google.com/setprefs?sig=0_2NTKosZrhWuuxpRrHUpBZ-0KhjA%3D&hl=en&source=homepage&sa=X&ved=0ahUKEwiC8tz6rqKUAxW-BtsEHevZHEkQ2ZgBCBc
+  - contentinfo [ref=e60]:
+    - generic [ref=e61]: Deutschland
+    - generic [ref=e62]:
+      - generic [ref=e63]:
+        - link "Werbeprogramme" [ref=e135] [cursor=pointer]:
+          - /url: https://www.google.com/intl/de_de/ads/?subid=ww-ww-et-g-awa-a-g_hpafoot1_1!o2&utm_source=google.com&utm_medium=referral&utm_campaign=google_hpafooter&fg=1
+        - link "Unternehmen" [ref=e136] [cursor=pointer]:
+          - /url: https://www.google.com/services/?subid=ww-ww-et-g-awa-a-g_hpbfoot1_1!o2&utm_source=google.com&utm_medium=referral&utm_campaign=google_hpbfooter&fg=1
+        - link "Wie funktioniert die Google Suche?" [ref=e137] [cursor=pointer]:
+          - /url: https://google.com/search/howsearchworks/?fg=1
+      - 'link "Drei Jahrzehnte Klimaschutz: Jede Entscheidung zählt" [ref=e138] [cursor=pointer]':
+        - /url: https://sustainability.google/intl/de/klimaschutz/?utm_source=googlehpfooter&utm_medium=housepromos&utm_campaign=bottom-footer&utm_content=
+      - generic [ref=e69]:
+        - link "Datenschutzerklärung" [ref=e139] [cursor=pointer]:
+          - /url: https://policies.google.com/privacy?hl=de&fg=1
+        - link "Nutzungsbedingungen" [ref=e140] [cursor=pointer]:
+          - /url: https://policies.google.com/terms?hl=de&fg=1
+        - button "Einstellungen" [ref=e141] [cursor=pointer]:
+          - generic [ref=e76]: Einstellungen

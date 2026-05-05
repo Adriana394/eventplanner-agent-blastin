@@ -1,9 +1,9 @@
 // Realistic data based on src/schemas.py + DEMO_CASES.md
 // Available models from src/event_client.py AVAILABLE_MODELS
 const AVAILABLE_MODELS = [
-  'openai/gpt-oss-120b:free',
+  'deepseek/deepseek-v3.2',
+  'google/gemini-2.5-flash',
   'anthropic/claude-haiku-4-5',
-  'qwen/qwen3-235b-a22b:free',
 ];
 const DEFAULT_MODEL = AVAILABLE_MODELS[0];
 

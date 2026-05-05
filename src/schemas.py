@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, EmailStr, model_validator, conint, confloat
+from pydantic import BaseModel, Field, EmailStr, model_validator
 from typing import List, Optional, Literal, Dict
 from datetime import date
 from enum import Enum
@@ -54,7 +54,7 @@ class TripRequest(BaseModel):
     sightseeing_enabled: bool = Field(default = True, description= 'If false, no sightseeing should be planned.')
     food_drink_enabled: bool = Field(default = True, description= 'If false, no restaurant, bar, or cafe recommendations should be planned.')
     
-    group_size: Optional[conint(ge=1, le=15)] = Field(default = None, description= 'Number of travel group.')
+    group_size: Optional[int] = Field(default = None, description= 'Number of people in the travel group (1–15).')
     budget: Optional[Budget] = Field(default = None, description= 'Optional budget information.')
     
     @model_validator(mode = 'after')
@@ -116,7 +116,7 @@ class Money(BaseModel):
     """ 
     Money representation
     """
-    amount_eur: Optional[confloat(ge=0)] = Field(default = None, description= 'Amount in EUR (integer)')
+    amount_eur: Optional[float] = Field(default = None, description= 'Amount in EUR, must be >= 0.')
     display: Optional[str] = Field(default = None, description= 'Original price text, e-g from 15€, free, 12€-18€')
     
     

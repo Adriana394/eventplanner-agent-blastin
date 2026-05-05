@@ -81,9 +81,9 @@ MODEL_PROVIDER_OPENAI = 'openai'
 MODEL_PROVIDER_OPENROUTER = 'openrouter'
 
 AVAILABLE_MODELS = [
-    'openai/gpt-oss-120b:free',
+    'deepseek/deepseek-v3.2',
+    'google/gemini-2.5-flash',
     'anthropic/claude-haiku-4-5',
-    'qwen/qwen3-235b-a22b:free',
 ]
 DEFAULT_MODEL = AVAILABLE_MODELS[0]
 BERLIN_TZ = ZoneInfo('Europe/Berlin')
@@ -1583,6 +1583,7 @@ async def run_full_planner_flow(
             planner_run = await _run_planner_with_schema_retry(
                 dion_planner,
                 planner_input_text,
+                max_turns = 20,
                 run_config = run_config,
             )
 
