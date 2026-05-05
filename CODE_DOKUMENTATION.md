@@ -113,12 +113,12 @@ The system uses three specialized AI agents. Each has a strict role and cannot d
 ## End-to-End Flow
 
 ```
-User fills form (+ selects AI model from dropdown)
+User fills form in browser (ui/Dion UI.html — React, no build step)
       │
       ▼
-UI builds UserRequest (ui/dion_gradio_ui.py)
+POST /api/plan  →  ui/dion_api.py  (FastAPI, sync endpoint, asyncio.run inside)
       │
-      ▼
+      ▼  builds UserRequest from request body
 run_full_planner_flow(user_request, planner_model=selected_model) (src/event_client.py)
       │
       ├─ 1. Start MCP servers (Playwright, filesystem, Eventim, DZT)
@@ -173,9 +173,13 @@ run_full_planner_flow(user_request, planner_model=selected_model) (src/event_cli
 
 | File | Role |
 |------|------|
-| `dion_gradio_ui.py` | Gradio frontend (primary UI). Collects user input, builds `UserRequest`, exposes the AI model selector, triggers flows, renders results. |
-| `dion_styles.py` | CSS for the Gradio UI (extracted to keep `dion_gradio_ui.py` focused on logic). |
-| `dion_translations.py` | EN/DE UI text strings (extracted to keep translations centralized). |
+| `dion_api.py` | FastAPI server. Exposes `POST /api/plan` and `POST /api/followup`, serializes `UIResult` to the JSON shape the frontend expects, and serves the static HTML/JSX files. Start with `uv run python ui/dion_api.py`. |
+| `Dion UI.html` | React frontend entry point. Loads React and Babel from CDN, then imports the JSX modules. No build step needed — open via the FastAPI server at `http://localhost:7860`. |
+| `dion-app.jsx` | Root `App` component. Owns all state (form, scope, plan, history), builds the API request body from form values, calls `/api/plan` and `/api/followup`, and renders the four-tab shell. |
+| `dion-data.jsx` | Constants: `AVAILABLE_MODELS`, dropdown options, and `DEMO_PLAN` (Berlin demo data for the "Fill with demo data" button). |
+| `dion-icons.jsx` | Lightweight SVG icon components used across the UI. |
+| `dion-output.jsx` | Output column components: `StatusBar`, `EventList`, `SpotList`, `Itinerary`, `FollowUpPanel`, `ReportFile`, and accordion JSON viewers. |
+| `dion-tabs.jsx` | The three non-planner tab views: `VenueTab` (flat filterable inventory), `BriefTab` (JSON inspector), `IterationTab` (versioned plan history). |
 
 ### `mcp_servers/`
 
@@ -253,39 +257,26 @@ Key behaviors:
 
 ## Progress Reporting
 
-The planning flow reports real progress steps to the UI via a callback:
+The FastAPI endpoints (`/api/plan`, `/api/followup`) are synchronous — they block until the agent finishes and then return the complete result as JSON. There is no server-sent streaming.
 
-```python
-ProgressCallback = Callable[[int, str], None]  # (percent, message)
-```
+The React frontend simulates progress while waiting: a `setInterval` timer advances through the `PROGRESS_STEPS` array in `dion-app.jsx` every 18 seconds. When the API response arrives, the timer is cleared and the real result is rendered immediately. If the API returns an error, the status bar shows a red dot with the error message.
 
-Full planning flow (`run_full_planner_flow`) progress steps:
-| % | Message (EN) |
-|---|--------------|
-| 5 | Starting MCP servers... |
-| 15 | Searching for events and places... |
-| 50 | Building the plan... |
-| 65 | Validating and refining the plan... |
-| 80 | Writing the report... |
-| 92 | Saving report... |
+The step labels in `dion-app.jsx` match the real backend phase names:
 
-Follow-up planning flow (`run_followup_planner_flow`) progress steps:
-| % | Message (EN) |
-|---|--------------|
-| 5 | Starting MCP servers... |
-| 15 | Revising the current plan... |
-| 50 | Processing and verifying results... |
-| 65 | Validating and refining the plan... |
-| 80 | Writing the report... |
-| 92 | Saving report... |
-
-Messages are bilingual (EN/DE) and derived from the user's language selection — not hardcoded in the UI.
+| Step | Label shown in UI |
+|------|-------------------|
+| 1 | Starting MCP servers… |
+| 2 | Searching for events and places… |
+| 3 | Building the plan… |
+| 4 | Validating and refining the plan… |
+| 5 | Writing the report… |
+| 6 | Plan and report created successfully. |
 
 ---
 
 ## UI Model Selector
 
-The Gradio UI exposes a dropdown that lets the user choose which AI model `Dion_Planner` should use for the current request. The list of options and the default are defined as constants in `src/event_client.py`:
+The top-bar of the React UI exposes a dropdown that lets the user choose which AI model `Dion_Planner` should use for the current request. The list of options and the default are defined as constants in `src/event_client.py`:
 
 ```python
 AVAILABLE_MODELS = [
@@ -298,14 +289,14 @@ DEFAULT_MODEL = AVAILABLE_MODELS[0]
 
 **How it flows through the code:**
 
-1. `ui/dion_gradio_ui.py` renders a `gr.Dropdown` populated from `AVAILABLE_MODELS`
-2. The selected value is passed to `submit_planner()` as `selected_model`
-3. `submit_planner` forwards it as `planner_model=selected_model` to both `run_full_planner_flow` and `run_followup_planner_flow`
-4. Both flow functions already accept an optional `planner_model` parameter — if provided it overrides the value from `.env` / the hardcoded fallback
+1. `ui/dion-data.jsx` imports `AVAILABLE_MODELS` and `DEFAULT_MODEL` as static constants (mirrored from the backend)
+2. The selected value is included as `model` in the JSON body sent to `POST /api/plan` or `POST /api/followup`
+3. `ui/dion_api.py` reads `body.model` and passes it as `planner_model=body.model` to both `run_full_planner_flow` and `run_followup_planner_flow`
+4. Both flow functions accept an optional `planner_model` parameter — if provided it overrides the value from `.env`
 
 `reporter_model` and `validator_model` are not affected and continue to use the `.env` configuration.
 
-To add or remove models, only `AVAILABLE_MODELS` in `src/event_client.py` needs to change — the UI picks up the list automatically at startup.
+To add or remove models, update `AVAILABLE_MODELS` in `src/event_client.py` **and** mirror the change in `ui/dion-data.jsx` — the two lists are currently kept in sync manually.
 
 ---
 
@@ -349,5 +340,6 @@ For someone new to the project:
 3. `src/schemas.py` — learn the data contracts before touching any logic
 4. `src/instructions.py` — understand how agent behavior is controlled
 5. `src/event_client.py` — follow the runtime flow end to end
-6. `ui/dion_gradio_ui.py` — see how the UI builds requests, renders results, and wires the model selector
-7. `mcp_servers/mcp_servers.py` + `event_server.py` + `dzt_server.py` — understand the tool layer
+6. `ui/dion_api.py` — see how the API layer builds `UserRequest`, calls the flows, and serializes results
+7. `ui/dion-app.jsx` — see how the frontend sends requests and renders the response
+8. `mcp_servers/mcp_servers.py` + `event_server.py` + `dzt_server.py` — understand the tool layer

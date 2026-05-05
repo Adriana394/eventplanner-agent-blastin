@@ -81,9 +81,9 @@ MODEL_PROVIDER_OPENAI = 'openai'
 MODEL_PROVIDER_OPENROUTER = 'openrouter'
 
 AVAILABLE_MODELS = [
-    'qwen/qwen3.6-plus:free',
-    'deepseek/deepseek-r1:free',
-    'nvidia/nemotron-3-super-120b-a12b:free',
+    'openai/gpt-oss-120b:free',
+    'anthropic/claude-haiku-4-5',
+    'qwen/qwen3-235b-a22b:free',
 ]
 DEFAULT_MODEL = AVAILABLE_MODELS[0]
 BERLIN_TZ = ZoneInfo('Europe/Berlin')

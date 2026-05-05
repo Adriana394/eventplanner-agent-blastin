@@ -63,7 +63,7 @@ See [Configuration](#configuration) for the full variable list.
 **4. Run the app**
 
 ```bash
-uv run python ui/dion_gradio_ui.py
+uv run python ui/dion_api.py
 ```
 
 The app is available at `http://localhost:7860`.
@@ -103,9 +103,13 @@ eventplanner-agent/
 │   ├── instructions.py        # System prompts for all three agents
 │   └── reporting.py           # Markdown report construction and file persistence
 ├── ui/
-│   ├── dion_gradio_ui.py      # Gradio frontend (primary UI)
-│   ├── dion_styles.py         # UI CSS (extracted for readability)
-│   └── dion_translations.py   # EN/DE UI text strings
+│   ├── dion_api.py            # FastAPI server — REST endpoints + static file serving
+│   ├── Dion UI.html           # React frontend entry point (no build step needed)
+│   ├── dion-app.jsx           # Root App component, form, scope toggles, API calls
+│   ├── dion-data.jsx          # Constants (models, dropdowns) and demo plan data
+│   ├── dion-icons.jsx         # SVG icon components
+│   ├── dion-output.jsx        # Output column components (status, events, itinerary)
+│   └── dion-tabs.jsx          # Venue table, JSON brief, and iteration history tabs
 ├── mcp_servers/
 │   ├── mcp_servers.py         # MCP server config and lifecycle management
 │   ├── event_server.py        # Eventim-facing MCP server
@@ -145,7 +149,7 @@ Quick import checks:
 ```bash
 uv run python -c "from src.event_client import run_full_planner_flow, AVAILABLE_MODELS; print('OK')"
 uv run python -c "from src.schemas import UserRequest; print('OK')"
-uv run python -c "import ui.dion_gradio_ui; print('OK')"
+uv run python -c "from ui.dion_api import app; print('OK')"
 ```
 
 ---
