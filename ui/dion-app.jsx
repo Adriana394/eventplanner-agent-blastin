@@ -396,7 +396,7 @@ function App(){
                   title: `${plan.request.trip.city} — ${plan.request.trip.date_start} → ${plan.request.trip.date_end}`,
                   saved_report_path: plan.saved_report_path,
                   recommendation: plan.recommendation,
-                  sections: ['Events','Sightseeing','Food & Drinks','Day-by-day itinerary'].map(h=>({heading:h, body_markdown:`<rendered content for ${h}>`}))
+                  sections: plan.markdown_report_sections || [],
                 }}/>
               </div>
             </>

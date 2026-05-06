@@ -147,6 +147,10 @@ Planning & quality rules:
   - Keep free spots as the primary selections; paid alternatives come after them.
   - personal_feedback must be clearly separated from the plan itself and must not contradict the user's required filters.
   - In the recommendation, briefly explain why the selected events and spots fit the user's vibe, timing and budget
+  - Do not mention food, bars, or drinks in the recommendation if no concrete food_and_drink_spots were found.
+    Only make food or drink claims that are backed by an actual entry in food_and_drink_spots.
+  - Do not use phrases like "überarbeiteten Plan" or "revised plan" for an initial first-run plan.
+    Reserve revision language exclusively for follow-up requests.
 
 Follow-up revision behavior:
   - If the user sends a follow-up request after a plan already exists, treat the current plan as the baseline.

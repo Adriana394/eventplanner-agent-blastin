@@ -144,6 +144,14 @@ def _serialize_result(user_request: UserRequest, result: dict) -> dict:
     if saved_path and Path(saved_path).exists():
         size_kb = round(Path(saved_path).stat().st_size / 1024, 1)
 
+    markdown_report = result.get('markdown_report')
+    markdown_report_sections = []
+    if markdown_report and markdown_report.sections:
+        markdown_report_sections = [
+            {'heading': s.heading, 'body_markdown': s.body_markdown}
+            for s in markdown_report.sections
+        ]
+
     return {
         'request': user_request.model_dump(mode='json'),
         'recommendation': {'sentences': list(ui.recommendation.sentences)},
@@ -196,6 +204,7 @@ def _serialize_result(user_request: UserRequest, result: dict) -> dict:
         'personal_feedback': list(ui.personal_feedback or []),
         'saved_report_path': saved_path,
         'report_size_kb': size_kb,
+        'markdown_report_sections': markdown_report_sections,
     }
 
 
@@ -206,6 +215,16 @@ def list_models():
 
 def _handle_error(exc: Exception) -> None:
     msg = str(exc)
+    if 'maximum context length' in msg.lower() or 'context_length_exceeded' in msg.lower() or 'context window' in msg.lower():
+        raise HTTPException(
+            status_code=422,
+            detail='The selected model\'s context window is too small for this request. Please choose a different model (e.g. Gemini 2.5 Flash).',
+        )
+    if 'compiled grammar is too large' in msg.lower() or 'simplify your tool schemas' in msg.lower():
+        raise HTTPException(
+            status_code=422,
+            detail='The selected model cannot handle the tool schemas required by Dion. Please choose a different model (e.g. Gemini 2.5 Flash).',
+        )
     if isinstance(exc, ModelBehaviorError):
         if 'Invalid JSON' in msg or 'invalid json' in msg.lower():
             raise HTTPException(

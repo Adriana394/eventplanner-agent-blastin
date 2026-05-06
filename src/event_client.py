@@ -24,7 +24,7 @@ from agents.exceptions import ModelBehaviorError
 
 from mcp_servers.mcp_servers import get_server_config, bundle_servers
 from src.schemas import (UserRequest, CoreResult, UIResult, MarkdownReport, ReporterResult, ValidationResult, ValidationIssue, Money,
-                         UIEventTeaser, UISpotItem, UIDayOverview, UIItineraryStop, UIFoodDrinkSpot, ItineraryStop)
+                         UIEventTeaser, UISpotItem, UIDayOverview, UIItineraryStop, UIFoodDrinkSpot, ItineraryStop, ItineraryDay)
 from src.reporting import append_missing_link_note_section, render_markdown, save_report_markdown
 
 from src.instructions import SYSTEM_INSTRUCTIONS_PLANNER, SYSTEM_INSTRUCTIONS_REPORTER, SYSTEM_INSTRUCTIONS_VALIDATOR
@@ -81,8 +81,9 @@ MODEL_PROVIDER_OPENAI = 'openai'
 MODEL_PROVIDER_OPENROUTER = 'openrouter'
 
 AVAILABLE_MODELS = [
-    'deepseek/deepseek-v3.2',
     'google/gemini-2.5-flash',
+    'z-ai/glm-4.7',
+    'moonshotai/kimi-k2.6',
     'anthropic/claude-haiku-4-5',
 ]
 DEFAULT_MODEL = AVAILABLE_MODELS[0]
@@ -576,6 +577,70 @@ def _sanitize_itinerary_placeholders(core_result: CoreResult) -> CoreResult:
     return core_result
 
 
+def _fix_event_stop_dates(core_result: CoreResult) -> CoreResult:
+    event_date_by_name: dict[str, str] = {}
+    for event in core_result.events:
+        key = _normalize_name_key(event.name)
+        event_date = _extract_iso_date(event.start_datetime)
+        if key and event_date:
+            event_date_by_name[key] = event_date
+
+    if not event_date_by_name:
+        return core_result
+
+    days_by_date: dict[str, ItineraryDay] = {}
+    for day in core_result.itinerary:
+        day_date = _extract_iso_date(day.day_label)
+        if day_date:
+            days_by_date[day_date] = day
+
+    displaced: list[tuple[ItineraryStop, str]] = []
+
+    for day in core_result.itinerary:
+        day_date = _extract_iso_date(day.day_label)
+        kept: list[ItineraryStop] = []
+        for stop in day.stops:
+            if stop.stop_type != 'event':
+                kept.append(stop)
+                continue
+            linked_key = _normalize_name_key(stop.linked_item_name or stop.title)
+            correct_date = event_date_by_name.get(linked_key)
+            if correct_date and correct_date != day_date:
+                displaced.append((stop, correct_date))
+            else:
+                kept.append(stop)
+        day.stops = kept
+
+    if not displaced:
+        return core_result
+
+    moved_names: list[str] = []
+    for stop, correct_date in displaced:
+        target_day = days_by_date.get(correct_date)
+        if target_day is None:
+            target_day = ItineraryDay(day_label=correct_date, stops=[])
+            days_by_date[correct_date] = target_day
+            core_result.itinerary.append(target_day)
+
+        target_day.stops.append(stop)
+        target_day.stops.sort(
+            key=lambda s: (_time_to_minutes(s.start_time) is None, _time_to_minutes(s.start_time) or 24 * 60, s.title)
+        )
+        moved_names.append(stop.linked_item_name or stop.title)
+
+    core_result.itinerary.sort(key=lambda d: (_extract_iso_date(d.day_label) or ''))
+    core_result.itinerary = [d for d in core_result.itinerary if d.stops]
+
+    unique_moved = list(dict.fromkeys(moved_names))
+    preview = ', '.join(f"'{n}'" for n in unique_moved[:3])
+    extra = f' (+{len(unique_moved) - 3} more)' if len(unique_moved) > 3 else ''
+    core_result.warnings.append(
+        f'Event stop date corrected: {preview}{extra} — the stop was placed on the wrong day and moved to match its actual event date.'
+    )
+
+    return core_result
+
+
 def _sanitize_food_and_drink_source_urls(core_result: CoreResult) -> CoreResult:
     malformed_source_names: list[str] = []
 
@@ -939,6 +1004,18 @@ def _collect_deterministic_validation_issues(user_request: UserRequest, core_res
                 severity = 'error',
                 )
             )
+
+    if user_request.trip.food_drink_enabled and not core_result.food_and_drink_spots:
+        issues.append(
+            ValidationIssue(
+                code = 'food_enabled_but_no_spots',
+                message = (
+                    'Food & drinks are enabled but no concrete food or drink venues were found. '
+                    'At least one specific restaurant, bar, or café is required.'
+                ),
+                severity = 'error',
+            )
+        )
 
     if not user_request.trip.events_enabled:
         itinerary_event_stops = [
@@ -1344,6 +1421,7 @@ async def _apply_post_processing_pipeline(
     authoritative_events: dict[str, dict],
 ) -> CoreResult:
     core_result = _sync_core_result_events_with_authoritative_data(core_result, authoritative_events)
+    core_result = _fix_event_stop_dates(core_result)
     core_result = _sanitize_itinerary_placeholders(core_result)
     core_result = _deduplicate_food_stops_in_itinerary(core_result)
     core_result = _insert_default_food_structure(user_request, core_result)
