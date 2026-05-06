@@ -91,56 +91,31 @@ const DEMO_PLAN = {
 // Demo cases covering a wide range of scenarios, vibes, and edge cases
 const DEMO_CASES = [
   {
-    id: 'case1', label: 'Case 1 — JGA-Wochenende Hamburg (DE)',
-    scope: { events:true, sightseeing:false, food:true },
-    form: { user_name:'Sara', city:'Hamburg', country:'Germany', date_start:'2026-05-22', date_end:'2026-05-23', include_last_day:true, planning_mode:'Full Trip', group_size:6, min_budget:'80', max_budget:'250', vibe:'RnB, Pop, Party, Girly', categories:'Club, Bar, Live-Performance', time_pref:'Evening', free_only:false, sightseeing_interests:'', sightseeing_mode:'No preference', sightseeing_free_only:false, must_avoid:'Techno, Metal, Familienevents', user_notes:'Wir feiern den Junggesellinnenabschied meiner besten Freundin. Wir wollen tanzen, Cocktails trinken und eine unvergessliche Nacht haben. Bitte etwas Besonderes!', language:'Deutsch' }
-  },
-  {
-    id: 'case2', label: 'Case 2 — Underground-Wochenende Leipzig (EN)',
+    id: 'case1', label: 'Case 1 — Rock Weekend Düsseldorf (EN)',
     scope: { events:true, sightseeing:true, food:true },
-    form: { user_name:'', city:'Leipzig', country:'Germany', date_start:'2026-05-29', date_end:'2026-05-31', include_last_day:false, planning_mode:'Full Trip', group_size:4, min_budget:'100', max_budget:'280', vibe:'techno, minimal, dark, underground', categories:'Club, Rave, DJ Set', time_pref:'Night', free_only:false, sightseeing_interests:'street art, alternative spots, record stores', sightseeing_mode:'Mixed', sightseeing_free_only:true, must_avoid:'mainstream clubs, pop music, tourist traps', user_notes:'', language:'English' }
+    form: { user_name:'Chris', city:'Düsseldorf', country:'Germany', date_start:'2026-05-22', date_end:'2026-05-24', include_last_day:false, planning_mode:'Full Trip', group_size:2, min_budget:'120', max_budget:'350', vibe:'rock, indie, alternative', categories:'Concert, Live Music', time_pref:'Evening', free_only:false, sightseeing_interests:'Altstadt, Rheinufer, street art', sightseeing_mode:'Mixed', sightseeing_free_only:false, must_avoid:'Techno, Pop, Familienevents', user_notes:'', language:'English' }
   },
   {
-    id: 'case3', label: 'Case 3 — Nicht unterstützte Stadt (Wien, AT)',
-    scope: { events:true, sightseeing:true, food:true },
-    form: { user_name:'', city:'Wien', country:'Austria', date_start:'2026-06-06', date_end:'2026-06-07', include_last_day:true, planning_mode:'Full Trip', group_size:2, min_budget:'100', max_budget:'300', vibe:'classical, cultural', categories:'Konzert, Oper', time_pref:'Evening', free_only:false, sightseeing_interests:'Architektur, Museen', sightseeing_mode:'Indoor', sightseeing_free_only:false, must_avoid:'', user_notes:'', language:'Deutsch' }
-  },
-  {
-    id: 'case4', label: 'Case 4 — After-Work Teamabend Frankfurt (EN)',
-    scope: { events:true, sightseeing:false, food:true },
-    form: { user_name:'', city:'Frankfurt', country:'Germany', date_start:'2026-06-05', date_end:'2026-06-05', include_last_day:true, planning_mode:'Event or Day Trip', group_size:8, min_budget:'40', max_budget:'120', vibe:'jazz, lounge, relaxed', categories:'Jazz, Live Music, Bar', time_pref:'Evening', free_only:false, sightseeing_interests:'', sightseeing_mode:'No preference', sightseeing_free_only:false, must_avoid:'loud clubs, standing venues, outdoor-only events', user_notes:'After-work event for a team of 8 — mix of introverts and extroverts. Prefer seated, relaxed venues over packed clubs.', language:'English' }
-  },
-  {
-    id: 'case5', label: 'Case 5 — Romantik-Wochenende München (DE)',
-    scope: { events:true, sightseeing:true, food:true },
-    form: { user_name:'Mia', city:'München', country:'Germany', date_start:'2026-06-12', date_end:'2026-06-14', include_last_day:false, planning_mode:'Full Trip', group_size:2, min_budget:'200', max_budget:'500', vibe:'Jazz, Soul, intim', categories:'Konzert, Jazz, Show', time_pref:'Evening', free_only:false, sightseeing_interests:'Parks, Biergärten, Aussichtspunkte', sightseeing_mode:'Mixed', sightseeing_free_only:false, must_avoid:'laute Clubs, Techno, Touristenfallen', user_notes:'Wir feiern unseren dritten Jahrestag. Bitte etwas Romantisches und Besonderes — gerne auch ein schönes Abendessen.', language:'Deutsch' }
-  },
-  {
-    id: 'case6', label: 'Case 6 — Null-Budget Solo Berlin (EN)',
-    scope: { events:true, sightseeing:true, food:false },
-    form: { user_name:'', city:'Berlin', country:'Germany', date_start:'2026-07-04', date_end:'2026-07-05', include_last_day:false, planning_mode:'Full Trip', group_size:1, min_budget:'0', max_budget:'30', vibe:'alternative, indie, experimental', categories:'free concert, open air, market', time_pref:'Daytime', free_only:true, sightseeing_interests:'murals, parks, flea markets', sightseeing_mode:'Outdoor', sightseeing_free_only:true, must_avoid:'paid clubs, expensive venues', user_notes:'', language:'English' }
-  },
-  {
-    id: 'case7', label: 'Case 7 — Follow-Up Revision (basiert auf Case 1)',
-    scope: { events:true, sightseeing:false, food:true },
-    followup_message: 'Bitte mehr Cocktailbars einbauen, das Abendprogramm am Samstag schärfer definieren und einen Frühstücks-Spot für Sonntag morgen ergänzen.',
-    form: { user_name:'Sara', city:'Hamburg', country:'Germany', date_start:'2026-05-22', date_end:'2026-05-23', include_last_day:true, planning_mode:'Full Trip', group_size:6, min_budget:'80', max_budget:'250', vibe:'RnB, Pop, Party, Girly', categories:'Club, Bar, Live-Performance', time_pref:'Evening', free_only:false, sightseeing_interests:'', sightseeing_mode:'No preference', sightseeing_free_only:false, must_avoid:'Techno, Metal, Familienevents', user_notes:'Wir feiern den Junggesellinnenabschied meiner besten Freundin. Wir wollen tanzen, Cocktails trinken und eine unvergessliche Nacht haben. Bitte etwas Besonderes!', language:'Deutsch' }
-  },
-  {
-    id: 'case8', label: 'Case 8 — Spontan-Kurztrip Köln (EN)',
-    scope: { events:true, sightseeing:true, food:true },
-    form: { user_name:'', city:'Köln', country:'Germany', date_start:'2026-05-09', date_end:'2026-05-09', include_last_day:true, planning_mode:'Event or Day Trip', group_size:2, min_budget:'', max_budget:'', vibe:'', categories:'', time_pref:'No preference', free_only:false, sightseeing_interests:'', sightseeing_mode:'No preference', sightseeing_free_only:false, must_avoid:'', user_notes:'', language:'English' }
-  },
-  {
-    id: 'case9', label: 'Case 9 — Nur Food, langer Freitext (Hannover, DE)',
+    id: 'case2', label: 'Case 2 — Nur Food & Drinks Köln (DE)',
     scope: { events:false, sightseeing:false, food:true },
-    form: { user_name:'Jonas', city:'Hannover', country:'Germany', date_start:'2026-07-18', date_end:'2026-07-18', include_last_day:true, planning_mode:'Event or Day Trip', group_size:3, min_budget:'60', max_budget:'180', vibe:'', categories:'', time_pref:'Evening', free_only:false, sightseeing_interests:'', sightseeing_mode:'No preference', sightseeing_free_only:false, must_avoid:'Fast Food, Kettenrestaurants', user_notes:'Wir möchten den Abend mit einer Weinprobe oder Cocktailbar starten und danach gut essen gehen. Gerne gehobene Küche oder ein tolles Weinlokal in der Innenstadt. Einer aus unserer Gruppe ist Vegetarier — bitte darauf achten.', language:'Deutsch' }
+    form: { user_name:'Jonas', city:'Köln', country:'Germany', date_start:'2026-05-30', date_end:'2026-05-30', include_last_day:true, planning_mode:'Event or Day Trip', group_size:3, min_budget:'60', max_budget:'180', vibe:'', categories:'', time_pref:'Evening', free_only:false, sightseeing_interests:'', sightseeing_mode:'No preference', sightseeing_free_only:false, must_avoid:'Fast Food, Kettenrestaurants', user_notes:'Wir möchten den Abend mit guten Cocktails starten und danach schick essen gehen. Einer aus der Gruppe ist Vegetarier.', language:'Deutsch' }
   },
   {
-    id: 'case10', label: 'Case 10 — Absolutes Minimum (Berlin, EN)',
+    id: 'case3', label: 'Case 3 — Free-Budget Day Leipzig (EN)',
+    scope: { events:true, sightseeing:true, food:false },
+    form: { user_name:'', city:'Leipzig', country:'Germany', date_start:'2026-06-06', date_end:'2026-06-06', include_last_day:true, planning_mode:'Event or Day Trip', group_size:2, min_budget:'0', max_budget:'20', vibe:'indie, alternative, experimental', categories:'Free Concert, Open Air', time_pref:'Daytime', free_only:true, sightseeing_interests:'street art, parks, Karl-Marx-Platz', sightseeing_mode:'Outdoor', sightseeing_free_only:true, must_avoid:'paid clubs, expensive venues, nightlife', user_notes:'', language:'English' }
+  },
+  {
+    id: 'case4', label: 'Case 4 — Minimale Eingabe Hamburg (DE)',
     scope: { events:true, sightseeing:true, food:true },
-    form: { user_name:'', city:'Berlin', country:'Germany', date_start:'2026-08-01', date_end:'2026-08-01', include_last_day:true, planning_mode:'Full Trip', group_size:2, min_budget:'', max_budget:'', vibe:'', categories:'', time_pref:'No preference', free_only:false, sightseeing_interests:'', sightseeing_mode:'No preference', sightseeing_free_only:false, must_avoid:'', user_notes:'', language:'English' }
-  }
+    form: { user_name:'', city:'Hamburg', country:'Germany', date_start:'2026-06-13', date_end:'2026-06-13', include_last_day:true, planning_mode:'Full Trip', group_size:2, min_budget:'', max_budget:'', vibe:'', categories:'', time_pref:'No preference', free_only:false, sightseeing_interests:'', sightseeing_mode:'No preference', sightseeing_free_only:false, must_avoid:'', user_notes:'', language:'Deutsch' }
+  },
+  {
+    id: 'case5', label: 'Case 5 — Follow-Up Revision (basiert auf Case 1)',
+    scope: { events:true, sightseeing:true, food:true },
+    followup_message: 'Add a Sunday brunch spot, replace the Saturday dinner with something more upscale, and cut sightseeing down to max 2 stops.',
+    form: { user_name:'Chris', city:'Düsseldorf', country:'Germany', date_start:'2026-05-22', date_end:'2026-05-24', include_last_day:false, planning_mode:'Full Trip', group_size:2, min_budget:'120', max_budget:'350', vibe:'rock, indie, alternative', categories:'Concert, Live Music', time_pref:'Evening', free_only:false, sightseeing_interests:'Altstadt, Rheinufer, street art', sightseeing_mode:'Mixed', sightseeing_free_only:false, must_avoid:'Techno, Pop, Familienevents', user_notes:'', language:'English' }
+  },
 ];
 
 window.DION_DATA = { AVAILABLE_MODELS, DEFAULT_MODEL, TIME_PREF, PLANNING_MODES, SIGHTSEEING_MODES, LANGUAGES, GROUP_SIZES, DEMO_PLAN, DEMO_CASES };
