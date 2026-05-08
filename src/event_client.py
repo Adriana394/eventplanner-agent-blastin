@@ -84,7 +84,6 @@ AVAILABLE_MODELS = [
     'google/gemini-2.5-flash',
     'z-ai/glm-4.7',
     'moonshotai/kimi-k2.6',
-    'anthropic/claude-haiku-4-5',
 ]
 DEFAULT_MODEL = AVAILABLE_MODELS[0]
 BERLIN_TZ = ZoneInfo('Europe/Berlin')
@@ -1318,7 +1317,7 @@ def _collect_deterministic_validation_issues(user_request: UserRequest, core_res
                 )
             )
 
-    if any(token in recommendation_text for token in ['bar', 'bars', 'cocktail', 'drinks']):
+    if re.search(r'\b(bar|bars|cocktail|drinks)\b', recommendation_text):
         has_bar = any(place.venue_type == 'bar' for place in core_result.food_and_drink_spots)
         if not has_bar:
             issues.append(
@@ -1450,6 +1449,62 @@ User request:
 """.strip()
 
 
+def _slim_core_result_for_followup(core_result: CoreResult) -> dict:
+    """Strip verbose fields from CoreResult before sending it as follow-up context.
+
+    The follow-up planner only needs names, dates, and structure to revise the plan —
+    not long descriptions, why_visit texts, or warnings from the previous run.
+    """
+    return {
+        'events': [
+            {
+                'name': e.name,
+                'start_datetime': e.start_datetime,
+                'end_datetime': e.end_datetime,
+                'address_or_area': e.address_or_area,
+                'price_display': e.price.display if e.price else None,
+                'category_tags': e.category_tags,
+            }
+            for e in core_result.events
+        ],
+        'sightseeing_spots': [
+            {
+                'name': s.name,
+                'address': s.address,
+                'opening_hours': s.opening_hours,
+                'entry_fee_display': s.entry_fee.display if s.entry_fee else None,
+            }
+            for s in core_result.sightseeing_spots
+        ],
+        'food_and_drink_spots': [
+            {
+                'name': f.name,
+                'venue_type': str(f.venue_type or ''),
+                'price_hint': f.price_hint,
+                'opening_hours': f.opening_hours,
+            }
+            for f in core_result.food_and_drink_spots
+        ],
+        'itinerary': [
+            {
+                'day_label': day.day_label,
+                'stops': [
+                    {
+                        'stop_type': str(stop.stop_type or ''),
+                        'start_time': stop.start_time,
+                        'title': stop.title,
+                        'notes': stop.notes,
+                        'linked_item_name': stop.linked_item_name,
+                    }
+                    for stop in day.stops
+                ],
+            }
+            for day in core_result.itinerary
+        ],
+        'recommendation': list(core_result.recommendation.sentences),
+    }
+
+
 def build_followup_planner_input_text(
     original_request: UserRequest,
     current_plan: CoreResult,
@@ -1469,8 +1524,8 @@ Keep the revised structured output language in: {selected_language}.
 Original user request:
 {json.dumps(original_request.model_dump(mode = 'json'), ensure_ascii = False, indent = 2)}
 
-Current plan:
-{json.dumps(current_plan.model_dump(mode = 'json'), ensure_ascii = False, indent = 2)}
+Current plan (key fields only — descriptions and metadata omitted to save context):
+{json.dumps(_slim_core_result_for_followup(current_plan), ensure_ascii = False, indent = 2)}
 
 User follow-up request:
 {followup_message.strip()}

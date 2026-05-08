@@ -34,14 +34,24 @@ const TABS = [
   { id:'iter',    label:'Follow-up iterations', icon:<IconRefresh size={13}/> },
 ];
 
-const PROGRESS_STEPS = [
-  { pct:10, msg:'Starting MCP servers…' },
-  { pct:30, msg:'Searching for events and places…' },
-  { pct:55, msg:'Building the plan…' },
-  { pct:75, msg:'Validating and refining the plan…' },
-  { pct:90, msg:'Writing the report…' },
-  { pct:100, msg:'Plan and report created successfully.' },
-];
+const PROGRESS_STEPS_I18N = {
+  en: [
+    { pct:10, msg:'Starting MCP servers…' },
+    { pct:30, msg:'Searching for events and places…' },
+    { pct:55, msg:'Building the plan…' },
+    { pct:75, msg:'Validating and refining the plan…' },
+    { pct:90, msg:'Writing the report…' },
+    { pct:100, msg:'Plan and report created successfully.' },
+  ],
+  de: [
+    { pct:10, msg:'MCP-Server werden gestartet…' },
+    { pct:30, msg:'Events und Orte werden gesucht…' },
+    { pct:55, msg:'Plan wird erstellt…' },
+    { pct:75, msg:'Plan wird geprüft und verfeinert…' },
+    { pct:90, msg:'Bericht wird geschrieben…' },
+    { pct:100, msg:'Plan und Bericht erfolgreich erstellt.' },
+  ],
+};
 
 function App(){
   const [tab, setTab] = React.useState('planner');
@@ -94,13 +104,15 @@ function App(){
     const t0 = performance.now();
     const elapsed = () => parseFloat(((performance.now() - t0) / 1000).toFixed(1));
 
-    setStatus({ state:'running', msg: isFollowUp ? 'Dion is revising the current plan…' : 'Dion is building the plan…', elapsed: 0 });
+    const isDe = form.language === 'Deutsch';
+    const progressSteps = PROGRESS_STEPS_I18N[isDe ? 'de' : 'en'];
+    setStatus({ state:'running', msg: isFollowUp ? (isDe ? 'Dion überarbeitet den aktuellen Plan…' : 'Dion is revising the current plan…') : (isDe ? 'Dion erstellt den Plan…' : 'Dion is building the plan…'), elapsed: 0 });
 
     // Advance progress steps on a timer while the API call runs in parallel
     let stepIdx = 0;
     const stepTimer = setInterval(() => {
-      stepIdx = Math.min(stepIdx + 1, PROGRESS_STEPS.length - 2);
-      setStatus({ state:'running', msg: PROGRESS_STEPS[stepIdx].msg, elapsed: elapsed() });
+      stepIdx = Math.min(stepIdx + 1, progressSteps.length - 2);
+      setStatus({ state:'running', msg: progressSteps[stepIdx].msg, elapsed: elapsed() });
     }, 18000);
 
     try {
@@ -141,7 +153,7 @@ function App(){
         recommendation_preview: (nextPlan.recommendation?.sentences || []).slice(0, 3),
         event_names: nextPlan.top_events.map(e => e.name),
       }]);
-      setStatus({ state:'done', msg: isFollowUp ? 'Plan updated successfully.' : 'Plan and report created successfully.', elapsed: elapsed() });
+      setStatus({ state:'done', msg: isFollowUp ? (isDe ? 'Plan erfolgreich aktualisiert.' : 'Plan updated successfully.') : (isDe ? 'Plan und Bericht erfolgreich erstellt.' : 'Plan and report created successfully.'), elapsed: elapsed() });
     } catch(err) {
       clearInterval(stepTimer);
       setStatus({ state:'error', msg: err.message, elapsed: elapsed() });

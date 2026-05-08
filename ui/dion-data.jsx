@@ -4,7 +4,6 @@ const AVAILABLE_MODELS = [
   'google/gemini-2.5-flash',
   'z-ai/glm-4.7',
   'moonshotai/kimi-k2.6',
-  'anthropic/claude-haiku-4-5',
 ];
 const DEFAULT_MODEL = AVAILABLE_MODELS[0];
 

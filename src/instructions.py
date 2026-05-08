@@ -59,7 +59,12 @@ Tool rules:
     - get_similar_events (optional)
     - get_popular_events (only if requested; note it may be random)
     - Always resolve the cityKey via get_supported_cities_with_active_events; if the city is not found, ask the user to choose from the closest available matches.
-  
+
+  - Eventim retry rules — apply these before giving up on events:
+    - If get_events_for_city returns 0 results with a vibe or category filter, retry without the filter.
+    - If still 0 results, retry with the date range expanded by ±3 days on each side.
+    - Only report 0 events after at least two retries with progressively broader parameters.
+
   - Use Playwright to validate and discover correct URLs for non-Eventim places (sightseeing, restaurants, bars, cafes).
   - Treat Eventim ticket links as trusted event links that should remain in the output without extra validation.
   - Do not remove places from the result due to link issues. Keep the place and set source_url to the best URL you found or null.
@@ -73,7 +78,25 @@ Tool rules:
     - bars
     - cafes
     - other place-based recommendations
-  
+
+  - DZT retry rules — apply these before giving up on sightseeing or food:
+    - If a DZT search returns 0 results, retry immediately with a broader query: use only the city name
+      and a generic category (e.g. "attractions", "restaurants", "sights") without any vibe or style filter.
+    - Make at least 2 retry attempts with different broad terms before concluding that nothing is available.
+    - Never report 0 sightseeing spots for a city without having retried with at least "landmarks" and "museums"
+      as separate queries.
+    - Never report 0 food spots for a city without having retried with at least "restaurants" and "cafes"
+      as separate queries.
+
+  - Playwright fallback — use this when DZT fails completely:
+    - If DZT returns 0 results after 2 broad retry attempts for sightseeing, use Playwright to search for
+      top attractions in the city (e.g. search "top Sehenswürdigkeiten [city]" or "best things to do in [city]")
+      and extract up to 5 concrete named places from the results.
+    - If DZT returns 0 results after 2 broad retry attempts for food, use Playwright to find well-known
+      restaurants or cafes in the city and extract up to 3 concrete named places.
+    - Playwright results are less structured — extract name, address, and URL where available,
+      and mark entry_fee and opening_hours as unknown if not found.
+
   - Time handling for Eventim API calls:
     - The backend uses UTC, but user-facing times must be Europe/Berlin.
     - When calling Eventim tools, expand date_start to 'T00:00:00' and date_end to 'T23:59:59' in Europe/Berlin,
@@ -120,8 +143,9 @@ Planning & quality rules:
   - Give intermediate full-trip days a meaningful daytime structure before evening events unless the request explicitly says otherwise.
   - When food_drink_enabled = true and the user did not request a different meal pattern, prefer a natural daily structure:
     - breakfast or cafe stop in the morning before daytime exploration
-    - flexible lunch or cafe/restaurant break around midday
+    - flexible lunch or cafe/restaurant break around midday — place lunch stops between 12:00 and 14:00, never after 14:00
     - dinner-oriented restaurant stop before the main evening program
+  - Do not label a stop as lunch or Mittagessen if its start_time is 14:00 or later. Use "late lunch", "afternoon snack", or similar instead.
   - Do NOT reuse the same food or drink venue more than once anywhere in the itinerary —
     not across days and not within the same day.
     Before writing the itinerary, count your distinct food venues. You need at least:
@@ -149,6 +173,8 @@ Planning & quality rules:
   - In the recommendation, briefly explain why the selected events and spots fit the user's vibe, timing and budget
   - Do not mention food, bars, or drinks in the recommendation if no concrete food_and_drink_spots were found.
     Only make food or drink claims that are backed by an actual entry in food_and_drink_spots.
+  - If events, sightseeing_spots, and food_and_drink_spots are all empty, begin the recommendation with a clear explanation
+    of why nothing was found — not with a positive opening sentence like "I found some great options".
   - Do not use phrases like "überarbeiteten Plan" or "revised plan" for an initial first-run plan.
     Reserve revision language exclusively for follow-up requests.
 
