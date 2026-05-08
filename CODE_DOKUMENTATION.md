@@ -79,6 +79,8 @@ The system uses three specialized AI agents. Each has a strict role and cannot d
 - No venue may be reused across multiple days for food/drink stops
 - Must make at least 2 separate DZT calls for sightseeing on multi-day trips
 - Scope flags (`events_enabled`, `sightseeing_enabled`, `food_drink_enabled`) are hard constraints
+- **Retry rules:** if Eventim returns 0 events with filters, retry without filter then with expanded date range; if DZT returns 0 results, retry with broad generic terms before giving up
+- **Playwright fallback:** if DZT returns 0 after 2 retries, use Playwright to search the web for sightseeing spots or restaurants in the city
 
 ### 2. Dion_Validator
 **What it does:** Reviews the `CoreResult` against the original `UserRequest` and returns a `ValidationResult` listing any concrete problems.
@@ -154,7 +156,7 @@ run_full_planner_flow(user_request, planner_model=selected_model) (src/event_cli
       └─ 9. Python appends final link notes if needed and saves report to outputs/reports/
 ```
 
-**Follow-up flow** (`run_followup_planner_flow`) is similar but passes the existing `CoreResult` as context and asks the planner to revise only affected parts.
+**Follow-up flow** (`run_followup_planner_flow`) is similar but compresses the existing `CoreResult` to a slim dict (names, dates, and itinerary structure only — no descriptions) before passing it as context. This keeps the follow-up input small enough to avoid context overflow. The reporter still receives the full `CoreResult`.
 
 ---
 
@@ -238,6 +240,7 @@ After the planner returns a `CoreResult`, Python applies a deterministic pipelin
 
 ```python
 _sync_core_result_events_with_authoritative_data()   # enrich from Eventim backend
+_fix_event_stop_dates()                              # move event stops placed on wrong day
 _sanitize_itinerary_placeholders()                   # remove generic filler stops
 _deduplicate_food_stops_in_itinerary()               # remove repeated food venues
 _insert_default_food_structure()                     # fill missing meal slots
@@ -259,18 +262,18 @@ Key behaviors:
 
 The FastAPI endpoints (`/api/plan`, `/api/followup`) are synchronous — they block until the agent finishes and then return the complete result as JSON. There is no server-sent streaming.
 
-The React frontend simulates progress while waiting: a `setInterval` timer advances through the `PROGRESS_STEPS` array in `dion-app.jsx` every 18 seconds. When the API response arrives, the timer is cleared and the real result is rendered immediately. If the API returns an error, the status bar shows a red dot with the error message.
+The React frontend simulates progress while waiting: a `setInterval` timer advances through the `PROGRESS_STEPS_I18N` object in `dion-app.jsx` every 18 seconds. The language (`en` or `de`) is derived from `form.language` at the start of each run. When the API response arrives, the timer is cleared and the real result is rendered immediately. If the API returns an error, the status bar shows a red dot with the error message.
 
-The step labels in `dion-app.jsx` match the real backend phase names:
+The step labels adapt to the user's selected language:
 
-| Step | Label shown in UI |
-|------|-------------------|
-| 1 | Starting MCP servers… |
-| 2 | Searching for events and places… |
-| 3 | Building the plan… |
-| 4 | Validating and refining the plan… |
-| 5 | Writing the report… |
-| 6 | Plan and report created successfully. |
+| Step | English | Deutsch |
+|------|---------|---------|
+| 1 | Starting MCP servers… | MCP-Server werden gestartet… |
+| 2 | Searching for events and places… | Events und Orte werden gesucht… |
+| 3 | Building the plan… | Plan wird erstellt… |
+| 4 | Validating and refining the plan… | Plan wird geprüft und verfeinert… |
+| 5 | Writing the report… | Bericht wird geschrieben… |
+| 6 | Plan and report created successfully. | Plan und Bericht erfolgreich erstellt. |
 
 ---
 
@@ -280,9 +283,9 @@ The top-bar of the React UI exposes a dropdown that lets the user choose which A
 
 ```python
 AVAILABLE_MODELS = [
-    'qwen/qwen3.6-plus:free',            # default
-    'deepseek/deepseek-r1:free',
-    'nvidia/nemotron-3-super-120b-a12b:free',
+    'google/gemini-2.5-flash',   # default — large context, reliable
+    'z-ai/glm-4.7',              # top τ²-Bench score
+    'moonshotai/kimi-k2.6',      # strong agentic benchmark results
 ]
 DEFAULT_MODEL = AVAILABLE_MODELS[0]
 ```
