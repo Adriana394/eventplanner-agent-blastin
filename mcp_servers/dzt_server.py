@@ -100,6 +100,40 @@ async def get_pois_by_criteria(
 
 
 @mcp.tool()
+async def get_events_by_criteria(
+    keywords: str,
+    date_range_start: str,
+    date_range_end: str | None = None,
+    name: str | None = None,
+    locality: str | None = None,
+    region: str | None = None,
+) -> dict:
+    """
+    Search DZT events: festivals, markets, city events and local cultural events
+    not covered by Eventim. Use alongside Eventim to get a complete picture.
+    Input notes:
+    - keywords: required, comma-separated, e.g. 'festival, markt, konzert'
+    - date_range_start / date_range_end: ISO 8601 date, e.g. '2026-05-22'
+    - locality: city name, e.g. 'Berlin'
+    - region: German federal state or touristic region, e.g. 'Bayern'
+    """
+    arguments = {
+        'keywords': keywords,
+        'dateRangeStart': date_range_start,
+    }
+    if date_range_end:
+        arguments['dateRangeEnd'] = date_range_end
+    if name:
+        arguments['name'] = name
+    if locality:
+        arguments['locality'] = locality
+    if region:
+        arguments['region'] = region
+
+    return await _dzt_tool_call('get_events_by_criteria', arguments)
+
+
+@mcp.tool()
 async def get_trails_by_criteria(
     name: str | None = None,
     keywords: str | None = None,

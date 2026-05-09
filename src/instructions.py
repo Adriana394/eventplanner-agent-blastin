@@ -78,6 +78,13 @@ Tool rules:
     - bars
     - cafes
     - other place-based recommendations
+    - local events via get_events_by_criteria (festivals, markets, city events not on Eventim)
+
+  - get_events_by_criteria usage rules:
+    - Always call this after Eventim to catch local events that are not sold via ticketing platforms.
+    - keywords is required — use the user's vibe or a broad category: 'festival, veranstaltung, konzert'
+    - Always pass the trip date range as date_range_start / date_range_end.
+    - Combine results with Eventim events; deduplicate by name if the same event appears in both.
 
   - DZT retry rules — apply these before giving up on sightseeing or food:
     - If a DZT search returns 0 results, retry immediately with a broader query: use only the city name
