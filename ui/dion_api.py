@@ -218,12 +218,12 @@ def _handle_error(exc: Exception) -> None:
     if 'maximum context length' in msg.lower() or 'context_length_exceeded' in msg.lower() or 'context window' in msg.lower():
         raise HTTPException(
             status_code=422,
-            detail='The selected model\'s context window is too small for this request. Please choose a different model (e.g. Gemini 2.5 Flash).',
+            detail='The selected model\'s context window is too small for this request. Please choose a different model with a larger context window.',
         )
     if 'compiled grammar is too large' in msg.lower() or 'simplify your tool schemas' in msg.lower():
         raise HTTPException(
             status_code=422,
-            detail='The selected model cannot handle the tool schemas required by Dion. Please choose a different model (e.g. Gemini 2.5 Flash).',
+            detail='The selected model cannot handle the tool schemas required by Dion. Please choose a different model.',
         )
     if isinstance(exc, ModelBehaviorError):
         if 'Invalid JSON' in msg or 'invalid json' in msg.lower():

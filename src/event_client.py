@@ -29,7 +29,7 @@ from src.reporting import append_missing_link_note_section, render_markdown, sav
 
 from src.instructions import SYSTEM_INSTRUCTIONS_PLANNER, SYSTEM_INSTRUCTIONS_REPORTER, SYSTEM_INSTRUCTIONS_VALIDATOR
 
-from typing import Callable
+from typing import Any, Callable
 
 ProgressCallback = Callable[[int, str], None]
 
@@ -105,6 +105,25 @@ REPAIR TASK:
 - Fix only the reported inconsistencies and constraint violations.
 - Return a full valid CoreResult JSON object only.
 """.strip()
+# --- TOKEN USAGE LOGGING ---
+# To disable: delete this function and all _log_token_usage() calls below.
+def _log_token_usage(run_result: Any, label: str) -> None:
+    try:
+        usage = run_result.context_wrapper.usage
+        entry = {
+            'ts': datetime.now().isoformat(timespec='seconds'),
+            'label': label,
+            'input_tokens': usage.input_tokens,
+            'output_tokens': usage.output_tokens,
+        }
+        log_path = Path(__file__).resolve().parent.parent / 'token_usage.jsonl'
+        with open(log_path, 'a', encoding='utf-8') as f:
+            f.write(json.dumps(entry) + '\n')
+    except Exception:
+        pass
+# --- END TOKEN USAGE LOGGING ---
+
+
 GENERIC_ITINERARY_TITLES = {
     'free time',
     'freie zeit',
@@ -604,7 +623,7 @@ def _fix_event_stop_dates(core_result: CoreResult) -> CoreResult:
                 continue
             linked_key = _normalize_name_key(stop.linked_item_name or stop.title)
             correct_date = event_date_by_name.get(linked_key)
-            if correct_date and correct_date != day_date:
+            if correct_date and day_date and correct_date != day_date:
                 displaced.append((stop, correct_date))
             else:
                 kept.append(stop)
@@ -623,7 +642,7 @@ def _fix_event_stop_dates(core_result: CoreResult) -> CoreResult:
 
         target_day.stops.append(stop)
         target_day.stops.sort(
-            key=lambda s: (_time_to_minutes(s.start_time) is None, _time_to_minutes(s.start_time) or 24 * 60, s.title)
+            key=lambda s: ((_t := _time_to_minutes(s.start_time)) is None, _t if _t is not None else 24 * 60, s.title)
         )
         moved_names.append(stop.linked_item_name or stop.title)
 
@@ -1360,6 +1379,7 @@ async def _run_validator(
     deterministic_issues = _collect_deterministic_validation_issues(user_request, core_result)
     validator_input_text = build_validation_input_text(user_request, core_result, deterministic_issues)
     validator_run = await Runner.run(validator_agent, validator_input_text, run_config = run_config)
+    _log_token_usage(validator_run, 'validator')
     validator_result = validator_run.final_output
     merged_issues = _dedupe_validation_issues([*deterministic_issues, *validator_result.issues])
     return ValidationResult(
@@ -1392,6 +1412,7 @@ async def _repair_core_result_if_needed(
         max_turns = 20,
         run_config = run_config,
     )
+    _log_token_usage(repair_run, 'repair')
     repaired_core_result = _sanitize_itinerary_placeholders(repair_run.final_output)
     repaired_core_result = _insert_default_food_structure(user_request, repaired_core_result)
     repaired_core_result = _sanitize_event_source_urls(repaired_core_result)
@@ -1719,6 +1740,7 @@ async def run_full_planner_flow(
                 max_turns = 20,
                 run_config = run_config,
             )
+        _log_token_usage(planner_run, 'planner')
 
         _progress(on_progress, 50, lang, 'building_plan')
 
@@ -1755,6 +1777,7 @@ async def run_full_planner_flow(
 
         with trace('dion_reporter'):
             reporter_run = await Runner.run(dion_reporter, reporter_input_text, run_config = run_config)
+        _log_token_usage(reporter_run, 'reporter')
 
         reporter_result = reporter_run.final_output
         markdown_report = append_missing_link_note_section(
@@ -1851,6 +1874,7 @@ async def run_followup_planner_flow(
                 max_turns = 20,
                 run_config = run_config,
             )
+        _log_token_usage(planner_run, 'planner_followup')
 
         _progress(on_progress, 50, lang, 'post_processing')
 
@@ -1887,6 +1911,7 @@ async def run_followup_planner_flow(
 
         with trace('dion_reporter_followup'):
             reporter_run = await Runner.run(dion_reporter, reporter_input_text, run_config = run_config)
+        _log_token_usage(reporter_run, 'reporter_followup')
 
         reporter_result = reporter_run.final_output
         markdown_report = append_missing_link_note_section(
