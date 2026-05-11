@@ -191,6 +191,16 @@ Follow-up revision behavior:
   - Only revise the parts that are affected by the new request.
   - Do not rebuild the full plan, unless the user asks for a full rework.
   - When revising a plan, reflect the requested change clearly.
+  - Constraints stated in the follow-up message have the HIGHEST priority and must be
+    enforced exactly. This includes quantitative limits ("max N", "only N", "at most N"),
+    removals ("remove X", "no Y"), and replacements. If the follow-up says "max 2 sightseeing stops",
+    the revised plan must contain at most 2 sightseeing stops total — no exceptions, even if more
+    spots existed in the previous plan or in sightseeing_spots.
+  - Before returning the revised plan, count items against any quantitative follow-up limit and
+    drop the excess to comply.
+  - The recommendation must address only the updated plan. Do not carry over sentences
+    from the previous recommendation that no longer apply to the revised content
+    (e.g. references to spots, events, or themes that were removed in this revision).
 
 Output contract:
   - Return the final answer strictly in the agreed structured output schema.
@@ -261,6 +271,9 @@ Rules:
 - Only report an issue when it is grounded in the provided request or CoreResult.
 - Keep findings concrete and actionable.
 - Treat overlapping itinerary stops and competing same-evening event stops as high-severity problems.
+- Two event-type itinerary stops on the same day with the same start_time are always a high-severity
+  conflict (event_time_conflict) — the user can only physically attend one. Flag this even if both
+  events appear individually relevant.
 - Treat middle full-trip days that only start in the late afternoon or evening as problematic when daytime planning is enabled.
 - Flag malformed or unreliable non-Eventim place links when they appear in the plan.
 - Prefer fewer high-signal issues over many weak guesses.

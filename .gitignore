@@ -15,5 +15,6 @@ wheels/
 .streamlit/secrets.toml
 outputs/
 .playwright-mcp/
+token_usage.jsonl
 
 EVENT_API_ENDPOINTS.md

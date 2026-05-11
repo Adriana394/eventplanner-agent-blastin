@@ -189,9 +189,7 @@ run_full_planner_flow(user_request, planner_model=selected_model) (src/event_cli
 |------|------|
 | `mcp_servers.py` | MCP server configuration and lifecycle. Defines which servers are available, passes config (e.g. reports directory), handles startup/shutdown. |
 | `event_server.py` | Custom Eventim-facing MCP server. Resolves cities, fetches events for a date range, normalizes UTC↔Europe/Berlin times, caches responses. |
-| `dzt_server.py` | DZT-facing MCP server. Wraps DZT tool calls for POI search, trails, and entity details. |
-| `test_mcp_connectivity.py` | Smoke-test script for MCP startup and basic tool access. Useful when a server fails before the planner runs. |
-| `web_server_test_backup.py` | Older local Playwright MCP prototype kept as backup/reference. Not part of the main runtime path. |
+| `dzt_server.py` | DZT-facing MCP server. Wraps DZT tool calls for POI search, local events, trails, and entity details. |
 
 ### Root files
 
@@ -200,8 +198,6 @@ run_full_planner_flow(user_request, planner_model=selected_model) (src/event_cli
 | `README.md` | Project overview and setup instructions. Start here. |
 | `DEMO_CASES.md` | All test/demo scenarios with inputs, expected outcomes, and checklists. |
 | `EVENT_API_ENDPOINTS.md` | Reference notes for the Eventim-facing backend endpoints and expected request/response shape. |
-| `IDEAS.md` | Future feature ideas parked for later (budget levels, mobility modes, etc.). |
-| `main.py` | Minimal placeholder entrypoint. Not used for the planner app itself. |
 | `pyproject.toml` | Project metadata and dependencies (managed with `uv`). |
 | `.env` | Local environment variables (model keys, API endpoints). Not committed. |
 | `outputs/reports/` | Where generated markdown reports are saved at runtime. |
@@ -220,6 +216,7 @@ MCP (Model Context Protocol) is the interface through which the AI agents call e
 
 **DZT** (via `dzt_server.py`)
 - `get_pois_by_criteria` — structured POI search for sightseeing, restaurants, bars, cafes, and similar place types
+- `get_events_by_criteria` — structured search for local events (festivals, markets, city events) not covered by Eventim
 - `get_trails_by_criteria` — structured trail search
 - `get_entity_details` — fetches full details for a specific DZT entity
 
@@ -329,8 +326,6 @@ The runtime reads these values from environment variables, typically loaded from
 | `DZT_URL` | DZT RPC endpoint |
 | `DZT_API_KEY` | API key for DZT |
 | `REPORTS_DIR` | Output path for saved reports (default: `outputs/reports/`) |
-
-The MCP smoke-test script `mcp_servers/test_mcp_connectivity.py` additionally reads `MCP_SMOKE_INCLUDE`, `MCP_SMOKE_SKIP`, `MCP_SMOKE_STARTUP_TIMEOUT`, and `MCP_SMOKE_TOOL_TIMEOUT`.
 
 ---
 

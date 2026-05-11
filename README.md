@@ -118,7 +118,6 @@ eventplanner-agent/
 │   └── reports/               # Generated markdown reports (runtime output)
 ├── CODE_DOKUMENTATION.md      # Detailed codebase guide for new team members
 ├── DEMO_CASES.md              # Test/demo scenarios with inputs and checklists
-├── IDEAS.md                   # Future feature ideas
 └── pyproject.toml             # Project metadata and dependencies
 ```
 
@@ -159,5 +158,4 @@ uv run python -c "from ui.dion_api import app; print('OK')"
 - `src/schemas.py` is the shared contract — coordinate with the team before changing it
 - Agent behavior is controlled via `src/instructions.py`, not only Python code
 - Available UI models are defined in `AVAILABLE_MODELS` in `src/event_client.py` — update there to add or remove choices
-- New feature ideas go in `IDEAS.md` before being implemented
 - Run through the relevant demo cases after any change to `event_client.py` or `instructions.py`

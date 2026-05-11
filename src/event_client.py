@@ -1367,6 +1367,26 @@ def _collect_deterministic_validation_issues(user_request: UserRequest, core_res
             )
         )
 
+    for day in core_result.itinerary:
+        events_by_time: dict[str, list[str]] = {}
+        for stop in day.stops:
+            if stop.stop_type != 'event' or not stop.start_time:
+                continue
+            events_by_time.setdefault(stop.start_time, []).append(stop.title or stop.linked_item_name or 'unnamed event')
+        for start_time, titles in events_by_time.items():
+            if len(titles) > 1:
+                issues.append(
+                    ValidationIssue(
+                        code = 'event_time_conflict',
+                        message = (
+                            f"On {day.day_label}, multiple events are scheduled at {start_time}: "
+                            f"{', '.join(titles)}. The user can only attend one — keep one and remove the others "
+                            'from the itinerary or move them to a different day.'
+                        ),
+                        severity = 'error',
+                    )
+                )
+
     return _dedupe_validation_issues(issues)
 
 
@@ -1548,8 +1568,14 @@ Original user request:
 Current plan (key fields only — descriptions and metadata omitted to save context):
 {json.dumps(_slim_core_result_for_followup(current_plan), ensure_ascii = False, indent = 2)}
 
+=== HARD CONSTRAINTS FROM THIS FOLLOW-UP (HIGHEST PRIORITY) ===
+The following follow-up message overrides the original request wherever they conflict.
+Any quantitative limits ("max N", "only N", "at most N"), removals ("remove X", "no Y"),
+or replacements stated below MUST be enforced exactly in the revised plan.
+
 User follow-up request:
 {followup_message.strip()}
+=== END HARD CONSTRAINTS ===
 """.strip()
 
 

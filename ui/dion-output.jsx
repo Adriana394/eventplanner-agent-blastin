@@ -10,10 +10,11 @@ function formatDateTime(iso){
 }
 function dayLabel(s){
   if(!s) return s;
-  try{
-    const d = new Date(s + 'T12:00:00');
-    return d.toLocaleDateString('de-DE', { weekday:'long', day:'2-digit', month:'long' });
-  }catch{ return s; }
+  const isoMatch = /^\d{4}-\d{2}-\d{2}$/.test(s);
+  if(!isoMatch) return s;
+  const d = new Date(s + 'T12:00:00');
+  if(isNaN(d.getTime())) return s;
+  return d.toLocaleDateString('de-DE', { weekday:'long', day:'2-digit', month:'long' });
 }
 
 function jsonHighlight(obj){
