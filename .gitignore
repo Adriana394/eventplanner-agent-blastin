@@ -18,3 +18,6 @@ outputs/
 token_usage.jsonl
 
 EVENT_API_ENDPOINTS.md
+
+# Internal handoff specs — kept local, not committed
+*Handoff*.md
