@@ -192,6 +192,7 @@ vermeiden. Der Reporter bekommt weiterhin das vollständige `CoreResult`.
 | `dion-app.jsx` | Wurzel-Komponente `App`. Hält den gesamten State (Form, Scope, Plan, History), baut den API-Request-Body aus den Formwerten, ruft `/api/plan` und `/api/followup` auf und rendert die vier-Tab-Hülle. |
 | `dion-data.jsx` | Konstanten: `AVAILABLE_MODELS`, Dropdown-Optionen und `DEMO_PLAN` (Berlin-Demo-Daten für den „Fill with demo data"-Button). |
 | `dion-icons.jsx` | Leichte SVG-Icon-Komponenten, die in der gesamten UI verwendet werden. |
+| `dion-mark.jsx` | Animiertes Dion-Maskottchen (`DionMark`) und Begrüßungs-Sprechblase (`DionBubble`), gerendert als fixes Floating-Widget unten rechts im Viewport. Die Bubble läuft durch eine deutsche und eine englische Nachricht und verschwindet danach. |
 | `dion-output.jsx` | Output-Spalten-Komponenten: `StatusBar`, `EventList`, `SpotList`, `Itinerary`, `FollowUpPanel`, `ReportFile` und Accordion-JSON-Viewer. |
 | `dion-tabs.jsx` | Die drei Nicht-Planner-Tab-Views: `VenueTab` (flaches, filterbares Inventar), `BriefTab` (JSON-Inspector), `IterationTab` (versionierte Plan-Historie). |
 

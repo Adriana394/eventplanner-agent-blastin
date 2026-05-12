@@ -180,6 +180,7 @@ run_full_planner_flow(user_request, planner_model=selected_model) (src/event_cli
 | `dion-app.jsx` | Root `App` component. Owns all state (form, scope, plan, history), builds the API request body from form values, calls `/api/plan` and `/api/followup`, and renders the four-tab shell. |
 | `dion-data.jsx` | Constants: `AVAILABLE_MODELS`, dropdown options, and `DEMO_PLAN` (Berlin demo data for the "Fill with demo data" button). |
 | `dion-icons.jsx` | Lightweight SVG icon components used across the UI. |
+| `dion-mark.jsx` | Animated Dion mascot (`DionMark`) and welcome speech bubble (`DionBubble`) rendered as a fixed floating widget at the bottom-right of the viewport. The bubble cycles through a German and an English message, then disappears. |
 | `dion-output.jsx` | Output column components: `StatusBar`, `EventList`, `SpotList`, `Itinerary`, `FollowUpPanel`, `ReportFile`, and accordion JSON viewers. |
 | `dion-tabs.jsx` | The three non-planner tab views: `VenueTab` (flat filterable inventory), `BriefTab` (JSON inspector), `IterationTab` (versioned plan history). |
 

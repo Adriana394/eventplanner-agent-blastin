@@ -108,6 +108,7 @@ eventplanner-agent/
 │   ├── dion-app.jsx           # Root App component, form, scope toggles, API calls
 │   ├── dion-data.jsx          # Constants (models, dropdowns) and demo plan data
 │   ├── dion-icons.jsx         # SVG icon components
+│   ├── dion-mark.jsx          # Animated Dion mascot + welcome speech bubble (floating bottom-right)
 │   ├── dion-output.jsx        # Output column components (status, events, itinerary)
 │   └── dion-tabs.jsx          # Venue table, JSON brief, and iteration history tabs
 ├── mcp_servers/
