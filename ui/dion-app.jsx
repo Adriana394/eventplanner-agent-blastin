@@ -2,6 +2,7 @@ const { AVAILABLE_MODELS, DEFAULT_MODEL, TIME_PREF, PLANNING_MODES, SIGHTSEEING_
 const { IconEvent, IconLandmark, IconFork, IconSpark, IconArrowRight, IconRefresh, IconReset, IconCheck, IconCpu, IconWand, IconChat } = window.DION_ICONS;
 const { StatusBar, EmptyState, PlanHead, Recommendation, EventList, SpotList, Itinerary, Warnings, PersonalNote, ReportFile, StructuredAccordion, FollowUpPanel } = window.DION_OUT;
 const { VenueTab, BriefTab, IterationTab } = window.DION_TABS;
+const { DionMark, DionBubble } = window.DION_MARK;
 
 const DEFAULT_FORM = {
   user_name: '', city: '', country: '',
@@ -184,7 +185,6 @@ function App(){
     <>
       <header className="topbar">
         <div className="brand">
-          <div className="brand-mark"></div>
           <div>
             <div className="brand-name">Dion <span style={{color:'var(--text-3)', fontWeight:500}}>by BLASTIn</span></div>
             <div className="brand-sub">event_planner.agent · v0.4.2</div>
@@ -415,6 +415,11 @@ function App(){
           )}
         </div>
       </div>}
+
+      <div className="dion-fab">
+        <DionMark />
+        <DionBubble />
+      </div>
     </>
   );
 }
