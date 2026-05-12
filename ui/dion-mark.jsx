@@ -48,24 +48,59 @@ function DionMark(){
   );
 }
 
+const BUBBLE_PHASES = [
+  {
+    head: 'Hey, ich bin Dion',
+    body: (
+      <>
+        Verrat mir deine <b>Stadt</b>, dein <b>Wochenende</b> und worauf du <b>Lust</b> hast — ich finde Events und Spots, die zu dir passen.
+      </>
+    ),
+    closeLabel: 'Schließen',
+  },
+  {
+    head: "Hey, I'm Dion",
+    body: (
+      <>
+        Tell me your <b>city</b>, your <b>weekend</b> and what you're <b>up for</b> — I'll find events and spots that fit you.
+      </>
+    ),
+    closeLabel: 'Close',
+  },
+];
+
 function DionBubble(){
-  const [dismissed, setDismissed] = React.useState(false);
-  const [hidden,    setHidden]    = React.useState(false);
+  const [phaseIndex, setPhaseIndex] = React.useState(0);
+  const [dismissed,  setDismissed]  = React.useState(false);
+  const [done,       setDone]       = React.useState(false);
 
   React.useEffect(() => {
-    const t = setTimeout(() => setHidden(true), 10000);
+    if (done) return;
+    setDismissed(false);
+    const t = setTimeout(() => {
+      if (phaseIndex < BUBBLE_PHASES.length - 1) {
+        setPhaseIndex(phaseIndex + 1);
+      } else {
+        setDone(true);
+      }
+    }, 10000);
     return () => clearTimeout(t);
-  }, []);
+  }, [phaseIndex, done]);
 
-  if (hidden) return null;
+  const handleDismiss = () => {
+    setDismissed(true);
+    setTimeout(() => setDone(true), 300);
+  };
+
+  if (done) return null;
+
+  const phase = BUBBLE_PHASES[phaseIndex];
 
   return (
-    <div className={`dion-bubble ${dismissed ? 'is-dismissed' : ''}`} role="status">
-      <button className="bubble-close" onClick={() => setDismissed(true)} aria-label="Schließen">×</button>
-      <div className="bubble-head"><span className="dot" />Hey, ich bin Dion</div>
-      <div className="bubble-body">
-        Verrat mir deine <b>Stadt</b>, dein <b>Wochenende</b> und worauf du <b>Lust</b> hast — ich finde Events und Spots, die zu dir passen.
-      </div>
+    <div key={phaseIndex} className={`dion-bubble ${dismissed ? 'is-dismissed' : ''}`} role="status">
+      <button className="bubble-close" onClick={handleDismiss} aria-label={phase.closeLabel}>×</button>
+      <div className="bubble-head"><span className="dot" />{phase.head}</div>
+      <div className="bubble-body">{phase.body}</div>
     </div>
   );
 }
