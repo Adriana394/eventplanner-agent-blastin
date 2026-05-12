@@ -1,9 +1,5 @@
 # Code Documentation — eventplanner-agent
 
-This document explains the architecture, files, and key concepts of `eventplanner-agent`
-for team members who are new to the project. It answers: *what does each file do, why does
-it exist, and how do the pieces fit together?*
-
 ---
 
 ## What Is This Project?

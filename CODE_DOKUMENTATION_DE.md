@@ -1,9 +1,5 @@
 # Code-Dokumentation — eventplanner-agent
 
-Dieses Dokument erklärt die Architektur, die Dateien und die zentralen Konzepte von `eventplanner-agent`
-für Team-Mitglieder, die neu im Projekt sind. Es beantwortet: *Was tut welche Datei, warum existiert sie,
-und wie greifen die Teile ineinander?*
-
 ---
 
 ## Was ist dieses Projekt?
