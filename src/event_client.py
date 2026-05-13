@@ -81,7 +81,8 @@ MODEL_PROVIDER_OPENAI = 'openai'
 MODEL_PROVIDER_OPENROUTER = 'openrouter'
 
 AVAILABLE_MODELS = [
-    'google/gemini-2.5-flash',
+    'openai/gpt-chat-latest',
+    'x-ai/grok-4.3',
     'z-ai/glm-4.7',
     'moonshotai/kimi-k2.6',
 ]
@@ -167,7 +168,7 @@ def get_default_model_selection(provider_name: str | None = None) -> dict[str, s
         planner_model = (
             os.getenv('OPENROUTER_PLANNER_MODEL')
             or os.getenv('PLANNER_MODEL')
-            or 'openai/gpt-4.1'
+            or DEFAULT_MODEL
         )
         reporter_model = (
             os.getenv('OPENROUTER_REPORTER_MODEL')
@@ -177,7 +178,7 @@ def get_default_model_selection(provider_name: str | None = None) -> dict[str, s
         validator_model = (
             os.getenv('OPENROUTER_VALIDATOR_MODEL')
             or os.getenv('VALIDATOR_MODEL')
-            or 'openai/gpt-oss-120b:free'
+            or 'openai/gpt-5-nano'
         )
     else:
         planner_model = os.getenv('OPENAI_PLANNER_MODEL') or os.getenv('PLANNER_MODEL') or 'gpt-4.1'

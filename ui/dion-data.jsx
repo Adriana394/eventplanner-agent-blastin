@@ -1,7 +1,8 @@
 // Realistic data based on src/schemas.py + DEMO_CASES.md
 // Available models from src/event_client.py AVAILABLE_MODELS
 const AVAILABLE_MODELS = [
-  'google/gemini-2.5-flash',
+  'openai/gpt-chat-latest',
+  'x-ai/grok-4.3',
   'z-ai/glm-4.7',
   'moonshotai/kimi-k2.6',
 ];
