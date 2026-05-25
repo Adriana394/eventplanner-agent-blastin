@@ -388,6 +388,8 @@ function App(){
                 onSubmit={()=>runPlan(true)}
                 onReset={reset}
                 busy={busy}
+                form={form}
+                onFormChange={set}
               />
 
               <div className="card tight">
