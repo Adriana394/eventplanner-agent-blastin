@@ -1,4 +1,5 @@
 const { IconEvent, IconLandmark, IconFork, IconSpark, IconLink, IconArrowRight, IconRefresh, IconReset, IconDownload, IconCheck, IconClock, IconWand, IconChat, IconCpu, IconWarn, IconInbox } = window.DION_ICONS;
+const { TIME_PREF } = window.DION_DATA;
 
 // ───────── Output helpers ─────────
 function formatDateTime(iso){
@@ -193,7 +194,14 @@ const StructuredAccordion = ({ title, data }) => (
   </details>
 );
 
-const FollowUpPanel = ({ value, onChange, onSubmit, onReset, busy }) => (
+const RefineField = ({ label, children }) => (
+  <div className="field">
+    <div className="field-label">{label}</div>
+    {children}
+  </div>
+);
+
+const FollowUpPanel = ({ value, onChange, onSubmit, onReset, busy, form, onFormChange }) => (
   <div className="followup">
     <div style={{display:'flex', alignItems:'center', gap:8, marginBottom:8}}>
       <IconWand /><strong style={{fontSize:13.5}}>Follow-up</strong>
@@ -202,6 +210,38 @@ const FollowUpPanel = ({ value, onChange, onSubmit, onReset, busy }) => (
     <div style={{fontSize:12.5, color:'var(--text-3)', marginBottom:10, lineHeight:1.5}}>
       Ask Dion to revise the current plan instead of creating a new one. Or change the form values and re-submit.
     </div>
+
+    {/* Refine parameters — tweak the core request before re-submitting */}
+    <div style={{background:'var(--surface)', border:'1px solid var(--border-soft)', borderRadius:11, padding:13, marginBottom:12}}>
+      <div className="section-label" style={{marginTop:0, marginBottom:10}}>Refine parameters</div>
+      <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px 12px'}}>
+        <RefineField label="Start date">
+          <input className="input" type="date" value={form.date_start} onChange={onFormChange('date_start')}/>
+        </RefineField>
+        <RefineField label="End date">
+          <input className="input" type="date" value={form.date_end} onChange={onFormChange('date_end')}/>
+        </RefineField>
+        <RefineField label="Min budget (€)">
+          <input className="input" type="number" min="0" step="10" placeholder="0" value={form.min_budget} onChange={onFormChange('min_budget')}/>
+        </RefineField>
+        <RefineField label="Max budget (€)">
+          <input className="input" type="number" min="0" step="10" placeholder="600" value={form.max_budget} onChange={onFormChange('max_budget')}/>
+        </RefineField>
+        <RefineField label="Event vibe">
+          <input className="input" placeholder="e.g. elegant, underground" value={form.vibe} onChange={onFormChange('vibe')}/>
+        </RefineField>
+        <RefineField label="Time preference">
+          <select className="select" value={form.time_pref} onChange={onFormChange('time_pref')}>
+            {TIME_PREF.map(t => <option key={t}>{t}</option>)}
+          </select>
+        </RefineField>
+        <div className="checkbox-row" style={{gridColumn:'1 / -1', padding:'2px 0'}}>
+          <input id="refine-free-only" type="checkbox" className="toggle" checked={form.free_only} onChange={onFormChange('free_only')}/>
+          <label htmlFor="refine-free-only">Free events only</label>
+        </div>
+      </div>
+    </div>
+
     <textarea
       value={value} onChange={e=>onChange(e.target.value)}
       placeholder="z. B. Tausch das Restaurant am Tag 2 gegen etwas Asiatisches und reduziere Sightseeing am Sonntag."
